@@ -6,6 +6,7 @@ import com.idai.gian_lan.dto.response.ModelResponse;
 import com.idai.gian_lan.entity.ModelStatistic;
 import com.idai.gian_lan.exception.AppException;
 import com.idai.gian_lan.exception.ErrorCode;
+import com.idai.gian_lan.mapper.ModelMapper;
 import com.idai.gian_lan.repository.ModelStatisticRepository;
 import com.idai.gian_lan.service.ModelService;
 import lombok.AccessLevel;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 public class ModelServiceImpl implements ModelService {
 
     ModelStatisticRepository modelStatisticRepository;
+    ModelMapper modelMapper;
 
     private static final String STATUS_ACTIVE = "ACTIVE";
     private static final String STATUS_INACTIVE = "INACTIVE";
@@ -38,25 +40,17 @@ public class ModelServiceImpl implements ModelService {
             deactivateAllModels();
         }
 
-        ModelStatistic model = ModelStatistic.builder()
-                .name(request.getName())
-                .precision(request.getPrecision())
-                .recall(request.getRecall())
-                .f1Score(request.getF1Score())
-                .status(status)
-                .modelPath(request.getModelPath())
-                .totalSamples(request.getTotalSamples())
-                .cheatingDetections(request.getCheatingDetections())
-                .build();
+        ModelStatistic model = modelMapper.toModelStatistic(request);
+        model.setStatus(status);
 
         ModelStatistic savedModel = modelStatisticRepository.save(model);
-        return toModelResponse(savedModel);
+        return modelMapper.toModelResponse(savedModel);
     }
 
     @Override
     public List<ModelResponse> getAllModels() {
         return modelStatisticRepository.findAll().stream()
-                .map(this::toModelResponse)
+                .map(modelMapper::toModelResponse)
                 .collect(Collectors.toList());
     }
 
@@ -64,14 +58,14 @@ public class ModelServiceImpl implements ModelService {
     public ModelResponse getModelById(String id) {
         ModelStatistic model = modelStatisticRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MODEL_NOT_EXISTED));
-        return toModelResponse(model);
+        return modelMapper.toModelResponse(model);
     }
 
     @Override
     public ModelResponse getActiveModel() {
         ModelStatistic activeModel = modelStatisticRepository.findByStatus(STATUS_ACTIVE)
                 .orElseThrow(() -> new AppException(ErrorCode.MODEL_NOT_EXISTED));
-        return toModelResponse(activeModel);
+        return modelMapper.toModelResponse(activeModel);
     }
 
     @Override
@@ -110,7 +104,7 @@ public class ModelServiceImpl implements ModelService {
         }
 
         ModelStatistic updatedModel = modelStatisticRepository.save(model);
-        return toModelResponse(updatedModel);
+        return modelMapper.toModelResponse(updatedModel);
     }
 
     @Override
@@ -122,7 +116,7 @@ public class ModelServiceImpl implements ModelService {
         deactivateAllModels();
         model.setStatus(STATUS_ACTIVE);
         ModelStatistic savedModel = modelStatisticRepository.save(model);
-        return toModelResponse(savedModel);
+        return modelMapper.toModelResponse(savedModel);
     }
 
     @Override
@@ -139,19 +133,5 @@ public class ModelServiceImpl implements ModelService {
             m.setStatus(STATUS_INACTIVE);
         }
         modelStatisticRepository.saveAll(activeModels);
-    }
-
-    private ModelResponse toModelResponse(ModelStatistic model) {
-        return ModelResponse.builder()
-                .id(model.getId())
-                .name(model.getName())
-                .precision(model.getPrecision())
-                .recall(model.getRecall())
-                .f1Score(model.getF1Score())
-                .status(model.getStatus())
-                .modelPath(model.getModelPath())
-                .totalSamples(model.getTotalSamples())
-                .cheatingDetections(model.getCheatingDetections())
-                .build();
     }
 }

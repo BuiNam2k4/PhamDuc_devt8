@@ -4,6 +4,7 @@ import com.idai.gian_lan.dto.response.UserResponse;
 import com.idai.gian_lan.entity.User;
 import com.idai.gian_lan.exception.AppException;
 import com.idai.gian_lan.exception.ErrorCode;
+import com.idai.gian_lan.mapper.UserMapper;
 import com.idai.gian_lan.repository.UserRepository;
 import com.idai.gian_lan.service.UserService;
 import lombok.AccessLevel;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
 
     UserRepository userRepository;
+    UserMapper userMapper;
 
     @Override
     public UserResponse getMyInfo() {
@@ -25,10 +27,6 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        return UserResponse.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .role(user.getRole())
-                .build();
+        return userMapper.toUserResponse(user);
     }
 }

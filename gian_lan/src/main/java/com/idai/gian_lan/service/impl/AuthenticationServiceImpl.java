@@ -10,6 +10,7 @@ import com.idai.gian_lan.dto.response.UserResponse;
 import com.idai.gian_lan.entity.User;
 import com.idai.gian_lan.exception.AppException;
 import com.idai.gian_lan.exception.ErrorCode;
+import com.idai.gian_lan.mapper.UserMapper;
 import com.idai.gian_lan.repository.UserRepository;
 import com.idai.gian_lan.service.AuthenticationService;
 import com.nimbusds.jose.*;
@@ -39,6 +40,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     final UserRepository userRepository;
     final PasswordEncoder passwordEncoder;
+    final UserMapper userMapper;
 
     @Value("${jwt.signerKey:1234567890123456789012345678901234567890123456789012345678901234}")
     String SIGNER_KEY;
@@ -53,19 +55,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 ? request.getRole().toUpperCase()
                 : Role.USER.name();
 
-        User user = User.builder()
-                .username(request.getUsername())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(assignedRole)
-                .build();
+        User user = userMapper.toUser(request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(assignedRole);
 
         user = userRepository.save(user);
 
-        return UserResponse.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .role(user.getRole())
-                .build();
+        return userMapper.toUserResponse(user);
     }
 
     @Override
