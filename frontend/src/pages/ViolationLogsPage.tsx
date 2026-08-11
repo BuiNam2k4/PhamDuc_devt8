@@ -5,16 +5,29 @@ import {
   Filter, 
   Download, 
   Eye, 
-  Calendar, 
-  Clock, 
-  Building2, 
   Smartphone,
   BookOpen,
   RotateCcw,
-  X
+  X,
+  LucideIcon
 } from 'lucide-react';
 
-const mockLogs = [
+interface MockLog {
+  id: string;
+  student: string;
+  sbd: string;
+  subject: string;
+  room: string;
+  camera: string;
+  type: string;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  time: string;
+  date: string;
+  model: string;
+  icon: LucideIcon;
+}
+
+const mockLogs: MockLog[] = [
   { id: 'LOG-8801', student: 'Nguyễn Văn A', sbd: '102', subject: 'Lập Trình Java nâng cao', room: 'Phòng A1.02', camera: 'CAM-02', type: 'Sử dụng điện thoại di động', severity: 'HIGH', time: '10:24:12', date: '2026-08-11', model: 'YOLOv8-v2.1', icon: Smartphone },
   { id: 'LOG-8802', student: 'Trần Thị B', sbd: '145', subject: 'Lập Trình Java nâng cao', room: 'Phòng A1.04', camera: 'CAM-01', type: 'Quay đầu bất thường (>45°)', severity: 'MEDIUM', time: '10:18:45', date: '2026-08-11', model: 'YOLOv8-v2.1', icon: RotateCcw },
   { id: 'LOG-8803', student: 'Lê Hoàng C', sbd: '089', subject: 'Cấu Trúc Dữ Liệu', room: 'Phòng B2.01', camera: 'CAM-03', type: 'Tài liệu cấm trên bàn thi', severity: 'HIGH', time: '09:55:02', date: '2026-08-11', model: 'YOLOv8-v2.1', icon: BookOpen },
@@ -23,9 +36,9 @@ const mockLogs = [
 ];
 
 export default function ViolationLogsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState('ALL');
-  const [selectedSnapshot, setSelectedSnapshot] = useState(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  const [selectedSnapshot, setSelectedSnapshot] = useState<MockLog | null>(null);
 
   const filteredLogs = mockLogs.filter(log => {
     const matchesSearch = log.student.toLowerCase().includes(searchTerm.toLowerCase()) || log.sbd.includes(searchTerm);
@@ -73,7 +86,7 @@ export default function ViolationLogsPage() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-cyan-500"
+            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-cyan-500 cursor-pointer"
           >
             <option value="ALL">Tất cả loại vi phạm</option>
             <option value="điện thoại">Sử dụng điện thoại</option>
@@ -132,7 +145,7 @@ export default function ViolationLogsPage() {
                     <td className="p-3.5 text-right">
                       <button
                         onClick={() => setSelectedSnapshot(log)}
-                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-[11px] inline-flex items-center gap-1 border border-slate-700"
+                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-[11px] inline-flex items-center gap-1 border border-slate-700 cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5 text-cyan-400" /> Xem Bằng Chứng
                       </button>
@@ -154,7 +167,7 @@ export default function ViolationLogsPage() {
                 <h3 className="text-base font-bold text-white">Ảnh Bằng Chứng Trích Xuất {selectedSnapshot.id}</h3>
                 <p className="text-xs text-slate-400">{selectedSnapshot.student} - SBD: {selectedSnapshot.sbd} ({selectedSnapshot.room})</p>
               </div>
-              <button onClick={() => setSelectedSnapshot(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setSelectedSnapshot(null)} className="text-slate-400 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -173,7 +186,7 @@ export default function ViolationLogsPage() {
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setSelectedSnapshot(null)}
-                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
               >
                 Đóng
               </button>

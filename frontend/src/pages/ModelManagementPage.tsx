@@ -1,50 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Cpu, 
-  CheckCircle, 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  Zap, 
-  TrendingUp, 
-  Activity, 
-  AlertCircle,
+import { useOutletContext } from 'react-router-dom';
+import {
+  Cpu,
+  CheckCircle,
+  Plus,
+  Trash2,
+  Edit3,
+  Zap,
+  TrendingUp,
+  Activity,
   BarChart2,
   FileCheck,
-  RefreshCw,
   X
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ModelStatistic, ModelCreationRequest, ModelUpdateRequest } from '../types';
+import { modelService } from '../services';
+import { MainLayoutContextType } from '../layouts/MainLayout';
 
-// Mock chart data for Loss & Accuracy Curves over 50 Epochs
 const epochMetrics = Array.from({ length: 20 }, (_, i) => {
   const epoch = (i + 1) * 2.5;
   return {
     epoch: `Ep ${Math.round(epoch)}`,
-    trainLoss: (0.85 * Math.exp(-0.1 * i) + 0.08).toFixed(3),
-    valLoss: (0.92 * Math.exp(-0.09 * i) + 0.12).toFixed(3),
-    mAP50: Math.min(0.96, (0.45 + 0.5 * (1 - Math.exp(-0.15 * i)))).toFixed(3),
-    mAP50_95: Math.min(0.88, (0.30 + 0.55 * (1 - Math.exp(-0.12 * i)))).toFixed(3),
+    trainLoss: Number((0.85 * Math.exp(-0.1 * i) + 0.08).toFixed(3)),
+    valLoss: Number((0.92 * Math.exp(-0.09 * i) + 0.12).toFixed(3)),
+    mAP50: Number(Math.min(0.96, (0.45 + 0.5 * (1 - Math.exp(-0.15 * i)))).toFixed(3)),
+    mAP50_95: Number(Math.min(0.88, (0.30 + 0.55 * (1 - Math.exp(-0.12 * i)))).toFixed(3)),
   };
 });
 
-// Confusion Matrix Data (Normalized percentages)
 const confusionMatrix = [
   { class: 'Dùng điện thoại', phone: 92.4, book: 3.1, head: 4.5 },
   { class: 'Tài liệu cấm', phone: 2.8, book: 91.0, head: 6.2 },
   { class: 'Quay đầu nghi vấn', phone: 1.5, book: 3.5, head: 95.0 },
 ];
 
-export default function ModelManagementPage({ activeModel, setActiveModel }) {
-  const [models, setModels] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [toast, setToast] = useState(null);
+export default function ModelManagementPage() {
+  const context = useOutletContext<MainLayoutContextType>();
+  const setActiveModel = context?.setActiveModel || (() => { });
+  const [models, setModels] = useState<ModelStatistic[]>([]);
+  const [_loading, setLoading] = useState<boolean>(true);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingModel, setEditingModel] = useState(null);
-  const [formData, setFormData] = useState({
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [editingModel, setEditingModel] = useState<ModelStatistic | null>(null);
+  const [formData, setFormData] = useState<ModelCreationRequest>({
     name: '',
     precision: '',
     recall: '',
@@ -55,31 +56,8 @@ export default function ModelManagementPage({ activeModel, setActiveModel }) {
     cheatingDetections: 120,
   });
 
-  const fetchModels = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/models');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.result) {
-          setModels(data.result);
-          const active = data.result.find(m => m.status === 'ACTIVE');
-          if (active) setActiveModel(active);
-        }
-      } else {
-        // Fallback default demo data if backend database is empty
-        useFallbackModels();
-      }
-    } catch (err) {
-      console.warn('API error, loading fallback models:', err);
-      useFallbackModels();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const useFallbackModels = () => {
-    const demoModels = [
+  const loadFallbackModels = () => {
+    const demoModels: ModelStatistic[] = [
       { id: '1', name: 'YOLOv8-v2.1 (LSTM HeadPose)', precision: '89.2%', recall: '87.8%', f1Score: '88.5%', status: 'ACTIVE', modelPath: '/models/yolov8_v2.1.pt', totalSamples: 4200, cheatingDetections: 310 },
       { id: '2', name: 'YOLOv8-v1.0 (Baseline)', precision: '83.5%', recall: '79.2%', f1Score: '81.3%', status: 'INACTIVE', modelPath: '/models/yolov8_v1.0.pt', totalSamples: 2500, cheatingDetections: 180 },
       { id: '3', name: 'MediaPipe-Pose-v1.5', precision: '91.0%', recall: '86.5%', f1Score: '88.7%', status: 'INACTIVE', modelPath: '/models/mediapipe_pose.onnx', totalSamples: 3100, cheatingDetections: 240 },
@@ -88,45 +66,58 @@ export default function ModelManagementPage({ activeModel, setActiveModel }) {
     setActiveModel(demoModels[0]);
   };
 
+  const fetchModels = async () => {
+    setLoading(true);
+    try {
+      const data = await modelService.getAll();
+      if (Array.isArray(data) && data.length > 0) {
+        setModels(data);
+        const active = data.find(m => m.status === 'ACTIVE');
+        if (active) setActiveModel(active);
+      } else {
+        loadFallbackModels();
+      }
+    } catch (_err) {
+      console.warn('API error, loading fallback models:', _err);
+      loadFallbackModels();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchModels();
   }, []);
 
-  const handleActivate = async (id) => {
+  const handleActivate = async (id: string) => {
     try {
-      const res = await fetch(`/api/models/${id}/activate`, { method: 'PUT' });
-      if (res.ok) {
-        const data = await res.json();
-        showToast('Đã kích hoạt mô hình thành công cho toàn bộ phòng thi!', 'success');
-        fetchModels();
-      } else {
-        // Client-side fallback update
-        setModels(prev => prev.map(m => ({
-          ...m,
-          status: m.id === id ? 'ACTIVE' : 'INACTIVE'
-        })));
-        const activated = models.find(m => m.id === id);
-        if (activated) setActiveModel({ ...activated, status: 'ACTIVE' });
-        showToast('Đã chuyển mô hình thành trạng thái ACTIVE (Hot-reload)', 'success');
-      }
-    } catch (err) {
-      showToast('Kích hoạt mô hình thất bại!', 'error');
+      await modelService.activate(id);
+      showToast('Đã kích hoạt mô hình thành công cho toàn bộ phòng thi!', 'success');
+      fetchModels();
+    } catch (_err) {
+      setModels(prev => prev.map(m => ({
+        ...m,
+        status: m.id === id ? 'ACTIVE' : 'INACTIVE'
+      })));
+      const activated = models.find(m => m.id === id);
+      if (activated) setActiveModel({ ...activated, status: 'ACTIVE' });
+      showToast('Đã chuyển mô hình thành trạng thái ACTIVE (Hot-reload)', 'success');
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa phiên bản mô hình này?')) return;
     try {
-      const res = await fetch(`/api/models/${id}`, { method: 'DELETE' });
+      await modelService.delete(id);
       showToast('Đã xóa phiên bản mô hình', 'info');
       fetchModels();
-    } catch (err) {
+    } catch (_err) {
       setModels(prev => prev.filter(m => m.id !== id));
       showToast('Đã xóa mô hình khỏi danh sách', 'info');
     }
   };
 
-  const handleOpenModal = (model = null) => {
+  const handleOpenModal = (model: ModelStatistic | null = null) => {
     if (model) {
       setEditingModel(model);
       setFormData({
@@ -155,38 +146,31 @@ export default function ModelManagementPage({ activeModel, setActiveModel }) {
     setIsModalOpen(true);
   };
 
-  const handleSubmitModal = async (e) => {
+  const handleSubmitModal = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const url = editingModel ? `/api/models/${editingModel.id}` : '/api/models';
-      const method = editingModel ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      if (res.ok) {
-        showToast(editingModel ? 'Đã cập nhật mô hình' : 'Đã thêm phiên bản mô hình mới', 'success');
-        fetchModels();
+      if (editingModel) {
+        await modelService.update(editingModel.id, formData as ModelUpdateRequest);
+        showToast('Đã cập nhật mô hình', 'success');
       } else {
-        // Fallback state update
-        if (editingModel) {
-          setModels(prev => prev.map(m => m.id === editingModel.id ? { ...m, ...formData } : m));
-        } else {
-          const newM = { ...formData, id: String(Date.now()) };
-          setModels(prev => [...prev, newM]);
-        }
-        showToast(editingModel ? 'Cập nhật thành công!' : 'Tạo mô hình mới thành công!', 'success');
+        await modelService.create(formData);
+        showToast('Đã thêm phiên bản mô hình mới', 'success');
       }
-    } catch (err) {
-      showToast('Lỗi gửi dữ liệu mô hình', 'error');
+      fetchModels();
+    } catch (_err) {
+      if (editingModel) {
+        setModels(prev => prev.map(m => m.id === editingModel.id ? { ...m, ...formData } as ModelStatistic : m));
+      } else {
+        const newM: ModelStatistic = { ...formData, id: String(Date.now()) };
+        setModels(prev => [...prev, newM]);
+      }
+      showToast(editingModel ? 'Cập nhật thành công!' : 'Tạo mô hình mới thành công!', 'success');
     } finally {
       setIsModalOpen(false);
     }
   };
 
-  const showToast = (msg, type = 'success') => {
+  const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
@@ -195,10 +179,9 @@ export default function ModelManagementPage({ activeModel, setActiveModel }) {
     <div className="space-y-6 pb-16">
       {/* Notification Toast */}
       {toast && (
-        <div className={`fixed top-20 right-8 z-50 px-4 py-3 rounded-xl border shadow-2xl flex items-center gap-3 text-xs font-semibold animate-bounce ${
-          toast.type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50' :
+        <div className={`fixed top-20 right-8 z-50 px-4 py-3 rounded-xl border shadow-2xl flex items-center gap-3 text-xs font-semibold animate-bounce ${toast.type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50' :
           toast.type === 'error' ? 'bg-red-950/90 text-red-300 border-red-500/50' : 'bg-slate-900 text-slate-200 border-slate-700'
-        }`}>
+          }`}>
           <Zap className="w-4 h-4 text-cyan-400" />
           <span>{toast.msg}</span>
         </div>
@@ -230,32 +213,30 @@ export default function ModelManagementPage({ activeModel, setActiveModel }) {
         {models.map((model) => {
           const isActive = model.status === 'ACTIVE';
           return (
-            <div 
-              key={model.id} 
-              className={`glass-panel p-5 rounded-xl border transition-all duration-300 relative flex flex-col justify-between ${
-                isActive 
-                  ? 'border-emerald-500/50 bg-gradient-to-b from-emerald-950/30 to-slate-900 shadow-xl shadow-emerald-950/30' 
-                  : 'border-slate-800 hover:border-slate-700'
-              }`}
+            <div
+              key={model.id}
+              className={`glass-panel p-5 rounded-xl border transition-all duration-300 relative flex flex-col justify-between ${isActive
+                ? 'border-emerald-500/50 bg-gradient-to-b from-emerald-950/30 to-slate-900 shadow-xl shadow-emerald-950/30'
+                : 'border-slate-800 hover:border-slate-700'
+                }`}
             >
               <div>
                 {/* Active Badge */}
                 <div className="flex items-center justify-between mb-3">
-                  <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full border flex items-center gap-1.5 ${
-                    isActive 
-                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-active-glow' 
-                      : 'bg-slate-800 text-slate-400 border-slate-700'
-                  }`}>
+                  <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full border flex items-center gap-1.5 ${isActive
+                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-active-glow'
+                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}>
                     {isActive ? <CheckCircle className="w-3 h-3 text-emerald-400" /> : null}
                     {isActive ? 'ĐANG KÍCH HOẠT (ACTIVE)' : 'LƯU TRỮ (INACTIVE)'}
                   </span>
 
                   <div className="flex items-center gap-1">
-                    <button onClick={() => handleOpenModal(model)} className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-cyan-400 transition-colors">
+                    <button onClick={() => handleOpenModal(model)} className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer">
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
                     {!isActive && (
-                      <button onClick={() => handleDelete(model.id)} className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-red-400 transition-colors">
+                      <button onClick={() => handleDelete(model.id)} className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-red-400 transition-colors cursor-pointer">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -436,7 +417,7 @@ export default function ModelManagementPage({ activeModel, setActiveModel }) {
               <h3 className="text-base font-bold text-white">
                 {editingModel ? 'Chỉnh Sửa Phiên Bản Mô Hình' : 'Khai Báo Mô Hình AI Mới'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -502,13 +483,13 @@ export default function ModelManagementPage({ activeModel, setActiveModel }) {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium"
+                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-semibold shadow-lg shadow-indigo-600/30"
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-semibold shadow-lg shadow-indigo-600/30 cursor-pointer"
                 >
                   Lưu Mô Hình
                 </button>
