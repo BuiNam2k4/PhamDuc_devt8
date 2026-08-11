@@ -25,5 +25,11 @@ public class Room {
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
 
+    @jakarta.persistence.Column(name = "room_code", unique = true, nullable = false)
+    String roomCode;
+
     String name;
+    Integer capacity;
+    String building;
+    String description;
 }

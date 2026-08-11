@@ -26,7 +26,13 @@ public class Student {
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
 
+    @Column(name = "student_code", unique = true, nullable = false)
     String studentCode;
+
+    String fullName;
+    String email;
+    String className;
+    String avatarUrl;
 
     @Column(columnDefinition = "TEXT")
     String faceEmbedding;

@@ -1,20 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Video, 
   Volume2, 
   VolumeX, 
   Maximize2, 
   AlertTriangle, 
   Camera, 
-  Clock, 
-  CheckCircle,
-  Eye,
-  Smartphone,
-  BookOpen,
-  RotateCcw
+  Smartphone, 
+  RotateCcw,
+  LucideIcon
 } from 'lucide-react';
+import { useWebSocket } from '../hooks/useWebSocket';
 
-const cameraFeeds = [
+interface BBox {
+  top: string;
+  left: string;
+  width: string;
+  height: string;
+}
+
+interface CameraFeed {
+  id: string;
+  room: string;
+  fps: number;
+  latency: string;
+  alert: boolean;
+  violation?: {
+    student: string;
+    type: string;
+    bbox: BBox;
+    icon: LucideIcon;
+  };
+  candidates: number;
+}
+
+interface LiveLogItem {
+  id: number;
+  cam: string;
+  student: string;
+  type: string;
+  time: string;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+const cameraFeeds: CameraFeed[] = [
   { 
     id: 'CAM-01', 
     room: 'Phòng A1.02 (Toàn cảnh)', 
@@ -26,7 +54,7 @@ const cameraFeeds = [
   },
   { 
     id: 'CAM-02', 
-    room: 'Phòng A1.02 (Góc phải)', 
+    room: 'Phòng A1.04 (Góc phải)', 
     fps: 22, 
     latency: '0.8s', 
     alert: true, 
@@ -52,19 +80,38 @@ const cameraFeeds = [
 ];
 
 export default function RealtimeMonitoringPage() {
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [selectedCam, setSelectedCam] = useState(null);
-  const [liveLogs, setLiveLogs] = useState([
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [selectedCam, setSelectedCam] = useState<string | null>(null);
+  const { isConnected, violations } = useWebSocket();
+
+  const [liveLogs, setLiveLogs] = useState<LiveLogItem[]>([
     { id: 101, cam: 'CAM-01', student: 'Nguyễn Văn A (SBD: 102)', type: 'Sử dụng điện thoại (YOLOv8: 96%)', time: new Date().toLocaleTimeString(), severity: 'HIGH' },
     { id: 102, cam: 'CAM-02', student: 'Trần Thị B (SBD: 145)', type: 'Quay đầu bất thường (MediaPipe Pose: 52°)', time: new Date().toLocaleTimeString(), severity: 'MEDIUM' }
   ]);
 
-  // Simulate real-time live alert log incoming
+  // Combine WebSocket real-time incoming violations with simulated live feed fallback
   useEffect(() => {
+    if (violations && violations.length > 0) {
+      const newest = violations[0];
+      const newLogItem: LiveLogItem = {
+        id: Date.now(),
+        cam: 'CAM-01',
+        student: 'Thí sinh phát hiện mới (Realtime WS)',
+        type: `${newest.violationType || 'Nghi vấn gian lận'} (${Math.round((newest.confidence || 0.9) * 100)}%)`,
+        time: new Date().toLocaleTimeString(),
+        severity: 'HIGH',
+      };
+      setLiveLogs(prev => [newLogItem, ...prev.slice(0, 7)]);
+    }
+  }, [violations]);
+
+  // Periodic simulation fallback if WS is not active
+  useEffect(() => {
+    if (isConnected) return;
     const interval = setInterval(() => {
       const types = ['Sử dụng điện thoại', 'Tài liệu cấm trên bàn', 'Quay đầu nghi vấn'];
       const randomType = types[Math.floor(Math.random() * types.length)];
-      const newLog = {
+      const newLog: LiveLogItem = {
         id: Date.now(),
         cam: 'CAM-01',
         student: `Thí sinh SBD: ${Math.floor(100 + Math.random() * 900)}`,
@@ -75,7 +122,7 @@ export default function RealtimeMonitoringPage() {
       setLiveLogs(prev => [newLog, ...prev.slice(0, 7)]);
     }, 8000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isConnected]);
 
   return (
     <div className="space-y-6 pb-16">
@@ -92,6 +139,10 @@ export default function RealtimeMonitoringPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <div className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${isConnected ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40' : 'bg-amber-950/80 text-amber-300 border-amber-500/40'}`}>
+            WS AI Engine: {isConnected ? 'Đã kết nối' : 'Đang thử lại'}
+          </div>
+
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border transition-all cursor-pointer ${
@@ -177,14 +228,14 @@ export default function RealtimeMonitoringPage() {
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={() => alert(`Đã chụp ảnh snapshot bằng chứng từ ${feed.id}`)} 
-                    className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300" 
+                    className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer" 
                     title="Chụp ảnh snapshot"
                   >
                     <Camera className="w-3.5 h-3.5" />
                   </button>
                   <button 
                     onClick={() => setSelectedCam(feed.id)} 
-                    className="p-1 rounded bg-indigo-600/40 hover:bg-indigo-600 text-indigo-200"
+                    className="p-1 rounded bg-indigo-600/40 hover:bg-indigo-600 text-indigo-200 cursor-pointer"
                     title="Xem phóng to camera"
                   >
                     <Maximize2 className="w-3.5 h-3.5" />
@@ -232,6 +283,33 @@ export default function RealtimeMonitoringPage() {
           </div>
         </div>
       </div>
+      {/* Modal Zoom Camera */}
+      {selectedCam && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="glass-panel p-6 rounded-2xl border border-indigo-500/30 max-w-3xl w-full space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-cyan-400" />
+                  Xem Chi Tiết Camera {selectedCam}
+                </h3>
+                <p className="text-xs text-slate-400">Luồng HD Phóng to - 30 FPS Full Resolution</p>
+              </div>
+              <button onClick={() => setSelectedCam(null)} className="text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800 text-xs font-semibold cursor-pointer">
+                Đóng
+              </button>
+            </div>
+
+            <div className="aspect-video bg-slate-950 rounded-xl overflow-hidden relative border border-slate-800 flex items-center justify-center">
+              <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-900 to-indigo-950/60 flex flex-col items-center justify-center">
+                <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping mb-2"></span>
+                <span className="text-xs font-bold text-cyan-300 font-mono">Luồng Camera {selectedCam} Đang Hoạt Động</span>
+                <span className="text-[11px] text-slate-400 mt-1">Độ phân giải: 1920x1080 @ 30fps</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

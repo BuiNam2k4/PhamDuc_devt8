@@ -3,32 +3,49 @@ import {
   FileVideo, 
   Upload, 
   Play, 
-  CheckCircle, 
   Clock, 
-  AlertTriangle, 
   Film, 
-  FileText, 
   Download,
   Smartphone,
   BookOpen,
   RotateCcw,
-  RefreshCw
+  RefreshCw,
+  LucideIcon
 } from 'lucide-react';
 
+interface TimelineResult {
+  time: string;
+  timestampSec: number;
+  student: string;
+  type: string;
+  confidence: string;
+  icon: LucideIcon;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+interface ScanResult {
+  fileName: string;
+  duration: string;
+  totalFrames: number;
+  scannedFrames: number;
+  violationsCount: number;
+  timeline: TimelineResult[];
+}
+
+const mockTimelineResults: TimelineResult[] = [
+  { time: '00:14:22', timestampSec: 862, student: 'Thí sinh Bàn 04 (SBD: 112)', type: 'Sử dụng điện thoại di động', confidence: '95.4%', icon: Smartphone, severity: 'HIGH' },
+  { time: '00:32:05', timestampSec: 1925, student: 'Thí sinh Bàn 08 (SBD: 145)', type: 'Quay đầu nghi vấn (54°)', confidence: '91.2%', icon: RotateCcw, severity: 'MEDIUM' },
+  { time: '00:48:19', timestampSec: 2899, student: 'Thí sinh Bàn 02 (SBD: 098)', type: 'Tài liệu cấm trên bàn thi', confidence: '89.8%', icon: BookOpen, severity: 'HIGH' },
+  { time: '01:05:40', timestampSec: 3940, student: 'Thí sinh Bàn 04 (SBD: 112)', type: 'Sử dụng điện thoại di động (Lần 2)', confidence: '97.1%', icon: Smartphone, severity: 'HIGH' },
+];
+
 export default function OfflineAnalysisPage() {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [isScanning, setIsScanning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [scanResult, setScanResult] = useState(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [progress, setProgress] = useState<number>(0);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
 
-  const mockTimelineResults = [
-    { time: '00:14:22', timestampSec: 862, student: 'Thí sinh Bàn 04 (SBD: 112)', type: 'Sử dụng điện thoại di động', confidence: '95.4%', icon: Smartphone, severity: 'HIGH' },
-    { time: '00:32:05', timestampSec: 1925, student: 'Thí sinh Bàn 08 (SBD: 145)', type: 'Quay đầu nghi vấn (54°)', confidence: '91.2%', icon: RotateCcw, severity: 'MEDIUM' },
-    { time: '00:48:19', timestampSec: 2899, student: 'Thí sinh Bàn 02 (SBD: 098)', type: 'Tài liệu cấm trên bàn thi', confidence: '89.8%', icon: BookOpen, severity: 'HIGH' },
-    { time: '01:05:40', timestampSec: 3940, student: 'Thí sinh Bàn 04 (SBD: 112)', type: 'Sử dụng điện thoại di động (Lần 2)', confidence: '97.1%', icon: Smartphone, severity: 'HIGH' },
-  ];
-
-  const handleFileChange = (e) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
       setScanResult(null);
@@ -133,7 +150,7 @@ export default function OfflineAnalysisPage() {
             {scanResult && (
               <button 
                 onClick={() => alert('Đã tải về báo cáo vi phạm dạng PDF/Excel!')}
-                className="px-3 py-1.5 rounded-lg bg-emerald-600/80 hover:bg-emerald-600 text-white font-semibold text-xs flex items-center gap-1.5 shadow"
+                className="px-3 py-1.5 rounded-lg bg-emerald-600/80 hover:bg-emerald-600 text-white font-semibold text-xs flex items-center gap-1.5 shadow cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" /> Xuất Báo Cáo
               </button>
@@ -201,7 +218,7 @@ export default function OfflineAnalysisPage() {
                         <span className="text-[10px] text-slate-400">Độ tin cậy: <strong className="text-emerald-400">{item.confidence}</strong></span>
                         <button 
                           onClick={() => alert(`Xem ảnh bằng chứng snapshot tại mốc thời gian ${item.time}`)}
-                          className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium border border-slate-700"
+                          className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium border border-slate-700 cursor-pointer"
                         >
                           Xem Bằng Chứng
                         </button>

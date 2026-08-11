@@ -1,7 +1,12 @@
 import React from 'react';
-import { Cpu, Bell, User, Wifi } from 'lucide-react';
+import { Cpu, Bell, Wifi } from 'lucide-react';
+import { ModelStatistic } from '../types';
 
-export default function Header({ activeModel }) {
+interface HeaderProps {
+  activeModel?: Partial<ModelStatistic> | null;
+}
+
+export default function Header({ activeModel }: HeaderProps) {
   return (
     <header className="h-16 glass-panel border-b border-slate-800 px-6 flex items-center justify-between sticky top-0 z-30 ml-64">
       {/* Active Model Quick Status */}

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { 
   Building2, 
   Users, 
@@ -10,11 +11,33 @@ import {
   Clock,
   Smartphone,
   BookOpen,
-  RotateCcw
+  RotateCcw,
+  LucideIcon
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { roomService } from '../services';
+import { MainLayoutContextType } from '../layouts/MainLayout';
 
-const hourlyDetections = [
+interface HourlyDetection {
+  time: string;
+  phone: number;
+  book: number;
+  head: number;
+}
+
+interface RecentViolation {
+  id: number;
+  student: string;
+  room: string;
+  camera: string;
+  type: string;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  time: string;
+  icon: LucideIcon;
+  color: string;
+}
+
+const hourlyDetections: HourlyDetection[] = [
   { time: '08:00', phone: 0, book: 0, head: 1 },
   { time: '08:30', phone: 1, book: 0, head: 2 },
   { time: '09:00', phone: 2, book: 1, head: 4 },
@@ -23,14 +46,31 @@ const hourlyDetections = [
   { time: '10:30', phone: 1, book: 0, head: 2 },
 ];
 
-const recentViolations = [
+const recentViolations: RecentViolation[] = [
   { id: 1, student: 'Nguyễn Văn A (SBD: 102)', room: 'Phòng A1.02', camera: 'CAM-02 (Góc Phải)', type: 'Sử dụng điện thoại', severity: 'HIGH', time: '10:24:12', icon: Smartphone, color: 'text-red-400 bg-red-500/10 border-red-500/30' },
   { id: 2, student: 'Trần Thị B (SBD: 145)', room: 'Phòng A1.04', camera: 'CAM-01 (Toàn Cảnh)', type: 'Quay đầu bất thường (>45°)', severity: 'MEDIUM', time: '10:18:45', icon: RotateCcw, color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
   { id: 3, student: 'Lê Hoàng C (SBD: 089)', room: 'Phòng B2.01', camera: 'CAM-03 (Bàn Thi)', type: 'Tài liệu cấm trên bàn', severity: 'HIGH', time: '09:55:02', icon: BookOpen, color: 'text-red-400 bg-red-500/10 border-red-500/30' },
   { id: 4, student: 'Pham Minh D (SBD: 210)', room: 'Phòng A1.02', camera: 'CAM-01 (Góc Trái)', type: 'Quay đầu bất thường (>50°)', severity: 'LOW', time: '09:40:19', icon: RotateCcw, color: 'text-slate-400 bg-slate-500/10 border-slate-500/30' },
 ];
 
-export default function DashboardPage({ setActiveTab, activeModel }) {
+export default function DashboardPage() {
+  const navigate = useNavigate();
+  const context = useOutletContext<MainLayoutContextType>();
+  const activeModel = context?.activeModel;
+  const [roomCount, setRoomCount] = useState<number>(6);
+
+  useEffect(() => {
+    roomService.getAll()
+      .then((rooms) => {
+        if (Array.isArray(rooms) && rooms.length > 0) {
+          setRoomCount(rooms.length);
+        }
+      })
+      .catch((err) => {
+        console.warn('Backend API room fetch fallback:', err);
+      });
+  }, []);
+
   return (
     <div className="space-y-6 pb-12">
       {/* Top Welcome Banner */}
@@ -51,14 +91,14 @@ export default function DashboardPage({ setActiveTab, activeModel }) {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setActiveTab('realtime')}
+              onClick={() => navigate('/realtime')}
               className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-indigo-600/30 border border-indigo-400/30 transition-all cursor-pointer"
             >
               <Video className="w-4 h-4 text-cyan-300" />
               <span>Xem Camera Trực Tiếp</span>
             </button>
             <button
-              onClick={() => setActiveTab('models')}
+              onClick={() => navigate('/models')}
               className="px-4 py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-2 border border-slate-700 transition-all cursor-pointer"
             >
               <Cpu className="w-4 h-4 text-cyan-400" />
@@ -73,7 +113,7 @@ export default function DashboardPage({ setActiveTab, activeModel }) {
         <div className="glass-panel p-5 rounded-xl border border-slate-800 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Phòng thi đang mở</p>
-            <h3 className="text-2xl font-extrabold text-white mt-1">06 <span className="text-xs text-slate-400 font-normal">Phòng</span></h3>
+            <h3 className="text-2xl font-extrabold text-white mt-1">{String(roomCount).padStart(2, '0')} <span className="text-xs text-slate-400 font-normal">Phòng</span></h3>
             <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1 font-medium">
               <CheckCircle2 className="w-3 h-3" /> 100% Camera Online
             </p>
@@ -165,8 +205,8 @@ export default function DashboardPage({ setActiveTab, activeModel }) {
                 Nhật Ký Vi Phạm Mới Nhất
               </h3>
               <button 
-                onClick={() => setActiveTab('logs')}
-                className="text-[11px] text-cyan-400 hover:underline flex items-center gap-0.5"
+                onClick={() => navigate('/logs')}
+                className="text-[11px] text-cyan-400 hover:underline flex items-center gap-0.5 cursor-pointer"
               >
                 Xem tất cả <ArrowUpRight className="w-3 h-3" />
               </button>
@@ -209,7 +249,7 @@ export default function DashboardPage({ setActiveTab, activeModel }) {
 
           <div className="pt-3 border-t border-slate-800">
             <button
-              onClick={() => setActiveTab('realtime')}
+              onClick={() => navigate('/realtime')}
               className="w-full py-2 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 font-medium text-xs text-center transition-all cursor-pointer"
             >
               Mở Khung Nhìn Giám Sát Camera (Realtime Grid)
