@@ -8,10 +8,16 @@ import java.util.List;
 
 public interface ModelService {
     ModelResponse createModel(ModelCreationRequest request);
+
     List<ModelResponse> getAllModels();
+
     ModelResponse getModelById(String id);
+
     ModelResponse getActiveModel();
+
     ModelResponse updateModel(String id, ModelUpdateRequest request);
+
     ModelResponse activateModel(String id);
+
     void deleteModel(String id);
 }

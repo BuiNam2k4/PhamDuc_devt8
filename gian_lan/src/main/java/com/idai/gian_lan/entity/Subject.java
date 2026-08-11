@@ -25,7 +25,10 @@ public class Subject {
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
 
-    String name;
+    @jakarta.persistence.Column(name = "subject_code", unique = true, nullable = false)
+    String subjectCode;
 
+    String name;
     int credits;
+    String department;
 }

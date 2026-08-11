@@ -14,7 +14,13 @@ public enum ErrorCode {
     USER_NOT_EXISTED(1005, "User not existed", HttpStatus.NOT_FOUND),
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
-    MODEL_NOT_EXISTED(1008, "Model not existed", HttpStatus.NOT_FOUND);
+    MODEL_NOT_EXISTED(1008, "Model not existed", HttpStatus.NOT_FOUND),
+    STUDENT_NOT_EXISTED(1009, "Student not existed", HttpStatus.NOT_FOUND),
+    STUDENT_EXISTED(1010, "Student code already existed", HttpStatus.BAD_REQUEST),
+    ROOM_NOT_EXISTED(1011, "Room not existed", HttpStatus.NOT_FOUND),
+    ROOM_EXISTED(1012, "Room code already existed", HttpStatus.BAD_REQUEST),
+    SUBJECT_NOT_EXISTED(1013, "Subject not existed", HttpStatus.NOT_FOUND),
+    SUBJECT_EXISTED(1014, "Subject code already existed", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;
@@ -26,15 +32,4 @@ public enum ErrorCode {
         this.httpStatusCode = httpStatusCode;
     }
 
-    public int getCode() {
-        return code;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public HttpStatusCode getHttpStatusCode() {
-        return httpStatusCode;
-    }
 }

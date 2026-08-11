@@ -1,5 +1,8 @@
 package com.idai.gian_lan.entity;
 
+import com.idai.gian_lan.dto.enums.CameraStatus;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -24,4 +27,16 @@ public class Camera {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
+
+    @jakarta.persistence.Column(name = "camera_code", unique = true)
+    String cameraCode;
+
+    String name;
+
+    String ipAddress;
+
+    String location;
+
+    @Enumerated(EnumType.STRING)
+    CameraStatus status;
 }

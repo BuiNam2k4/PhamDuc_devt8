@@ -1,5 +1,8 @@
 package com.idai.gian_lan.entity;
 
+import com.idai.gian_lan.dto.enums.ViolationType;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -26,6 +29,11 @@ public class RecognitionResult {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
+
+    @Enumerated(EnumType.STRING)
+    ViolationType violationType;
+
+    Double confidence;
 
     String detectionTime;
 

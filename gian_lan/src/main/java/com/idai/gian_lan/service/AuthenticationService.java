@@ -9,6 +9,8 @@ import com.idai.gian_lan.dto.response.UserResponse;
 
 public interface AuthenticationService {
     UserResponse register(UserRegisterRequest request);
+
     AuthenticationResponse authenticate(AuthenticationRequest request);
+
     IntrospectResponse introspect(IntrospectRequest request);
 }

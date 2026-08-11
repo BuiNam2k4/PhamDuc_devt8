@@ -1,5 +1,8 @@
 package com.idai.gian_lan.entity;
 
+import com.idai.gian_lan.dto.enums.ExamStatus;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -26,6 +29,13 @@ public class ExamSessionDetail {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
+
+    @Enumerated(EnumType.STRING)
+    ExamStatus status;
+
+    String seatNumber;
+
+    String note;
 
     @ManyToOne
     @JoinColumn(name = "student_id")
