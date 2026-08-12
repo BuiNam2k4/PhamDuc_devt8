@@ -12,6 +12,7 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
@@ -21,4 +22,6 @@ public class User {
 
     String password;
     String role;
+    String fullName;
+    String email;
 }

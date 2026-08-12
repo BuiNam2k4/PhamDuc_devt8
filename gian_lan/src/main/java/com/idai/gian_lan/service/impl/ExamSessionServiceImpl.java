@@ -1,0 +1,157 @@
+package com.idai.gian_lan.service.impl;
+
+import com.idai.gian_lan.dto.enums.ExamStatus;
+import com.idai.gian_lan.dto.request.ExamSessionCreationRequest;
+import com.idai.gian_lan.dto.request.ExamSessionUpdateRequest;
+import com.idai.gian_lan.dto.response.ExamSessionResponse;
+import com.idai.gian_lan.entity.ExamSession;
+import com.idai.gian_lan.entity.ExamSessionDetail;
+import com.idai.gian_lan.entity.Room;
+import com.idai.gian_lan.entity.Student;
+import com.idai.gian_lan.entity.Subject;
+import com.idai.gian_lan.exception.AppException;
+import com.idai.gian_lan.exception.ErrorCode;
+import com.idai.gian_lan.mapper.ExamSessionMapper;
+import com.idai.gian_lan.repository.ExamSessionDetailRepository;
+import com.idai.gian_lan.repository.ExamSessionRepository;
+import com.idai.gian_lan.repository.RoomRepository;
+import com.idai.gian_lan.repository.StudentRepository;
+import com.idai.gian_lan.repository.SubjectRepository;
+import com.idai.gian_lan.service.ExamSessionService;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class ExamSessionServiceImpl implements ExamSessionService {
+
+    ExamSessionRepository examSessionRepository;
+    ExamSessionDetailRepository examSessionDetailRepository;
+    RoomRepository roomRepository;
+    SubjectRepository subjectRepository;
+    StudentRepository studentRepository;
+    ExamSessionMapper examSessionMapper;
+
+    @Override
+    @Transactional
+    public ExamSessionResponse createExamSession(ExamSessionCreationRequest request) {
+        Room room = roomRepository.findById(request.getRoomId())
+                .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_EXISTED));
+
+        Subject subject = subjectRepository.findById(request.getSubjectId())
+                .orElseThrow(() -> new AppException(ErrorCode.SUBJECT_NOT_EXISTED));
+
+        ExamSession examSession = examSessionMapper.toExamSession(request);
+        examSession.setRoom(room);
+        examSession.setSubject(subject);
+
+        List<ExamSessionDetail> details = new ArrayList<>();
+        if (request.getStudentIds() != null && !request.getStudentIds().isEmpty()) {
+            int seatCounter = 1;
+            for (String studentId : request.getStudentIds()) {
+                Student student = studentRepository.findById(studentId)
+                        .orElseThrow(() -> new AppException(ErrorCode.STUDENT_NOT_EXISTED));
+                
+                ExamSessionDetail detail = ExamSessionDetail.builder()
+                        .examSession(examSession)
+                        .student(student)
+                        .status(ExamStatus.SCHEDULED)
+                        .seatNumber("S" + String.format("%02d", seatCounter++))
+                        .build();
+                details.add(detail);
+            }
+        }
+        examSession.setExamSessionDetails(details);
+
+        ExamSession savedSession = examSessionRepository.save(examSession);
+        return examSessionMapper.toExamSessionResponse(savedSession);
+    }
+
+    @Override
+    public List<ExamSessionResponse> getAllExamSessions() {
+        return examSessionRepository.findAll().stream()
+                .map(examSessionMapper::toExamSessionResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public ExamSessionResponse getExamSessionById(String id) {
+        ExamSession examSession = examSessionRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.EXAM_SESSION_NOT_EXISTED));
+        return examSessionMapper.toExamSessionResponse(examSession);
+    }
+
+    @Override
+    @Transactional
+    public ExamSessionResponse updateExamSession(String id, ExamSessionUpdateRequest request) {
+        ExamSession examSession = examSessionRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.EXAM_SESSION_NOT_EXISTED));
+
+        examSessionMapper.updateExamSession(examSession, request);
+
+        if (request.getRoomId() != null) {
+            Room room = roomRepository.findById(request.getRoomId())
+                    .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_EXISTED));
+            examSession.setRoom(room);
+        }
+
+        if (request.getSubjectId() != null) {
+            Subject subject = subjectRepository.findById(request.getSubjectId())
+                    .orElseThrow(() -> new AppException(ErrorCode.SUBJECT_NOT_EXISTED));
+            examSession.setSubject(subject);
+        }
+
+        ExamSession updatedSession = examSessionRepository.save(examSession);
+        return examSessionMapper.toExamSessionResponse(updatedSession);
+    }
+
+    @Override
+    @Transactional
+    public void deleteExamSession(String id) {
+        ExamSession examSession = examSessionRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.EXAM_SESSION_NOT_EXISTED));
+        examSessionRepository.delete(examSession);
+    }
+
+    @Override
+    @Transactional
+    public ExamSessionResponse addStudentsToSession(String id, List<String> studentIds) {
+        ExamSession examSession = examSessionRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.EXAM_SESSION_NOT_EXISTED));
+
+        List<ExamSessionDetail> details = examSession.getExamSessionDetails();
+        if (details == null) {
+            details = new ArrayList<>();
+        }
+
+        int currentSeat = details.size() + 1;
+        for (String studentId : studentIds) {
+            boolean exists = details.stream()
+                    .anyMatch(d -> d.getStudent() != null && d.getStudent().getId().equals(studentId));
+            if (!exists) {
+                Student student = studentRepository.findById(studentId)
+                        .orElseThrow(() -> new AppException(ErrorCode.STUDENT_NOT_EXISTED));
+
+                ExamSessionDetail detail = ExamSessionDetail.builder()
+                        .examSession(examSession)
+                        .student(student)
+                        .status(ExamStatus.SCHEDULED)
+                        .seatNumber("S" + String.format("%02d", currentSeat++))
+                        .build();
+                details.add(detail);
+            }
+        }
+
+        examSession.setExamSessionDetails(details);
+        ExamSession updatedSession = examSessionRepository.save(examSession);
+        return examSessionMapper.toExamSessionResponse(updatedSession);
+    }
+}

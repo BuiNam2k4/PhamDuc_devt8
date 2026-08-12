@@ -13,4 +13,8 @@ public class UserResponse {
     String id;
     String username;
     String role;
+    String fullName;
+    String email;
+    String studentCode;
+    String className;
 }

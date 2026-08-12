@@ -1,7 +1,10 @@
 package com.idai.gian_lan.entity;
 
+import com.idai.gian_lan.dto.enums.ExamMode;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -35,6 +38,9 @@ public class ExamSession {
     Date startTime;
 
     float duration;
+
+    @Enumerated(EnumType.STRING)
+    ExamMode mode;
 
     @ManyToOne
     @JoinColumn(name = "room_id")

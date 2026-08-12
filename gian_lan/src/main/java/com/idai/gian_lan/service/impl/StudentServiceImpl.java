@@ -1,17 +1,21 @@
 package com.idai.gian_lan.service.impl;
 
+import com.idai.gian_lan.dto.enums.Role;
 import com.idai.gian_lan.dto.request.StudentCreationRequest;
 import com.idai.gian_lan.dto.request.StudentUpdateRequest;
 import com.idai.gian_lan.dto.response.StudentResponse;
 import com.idai.gian_lan.entity.Student;
+import com.idai.gian_lan.entity.User;
 import com.idai.gian_lan.exception.AppException;
 import com.idai.gian_lan.exception.ErrorCode;
 import com.idai.gian_lan.mapper.StudentMapper;
 import com.idai.gian_lan.repository.StudentRepository;
+import com.idai.gian_lan.repository.UserRepository;
 import com.idai.gian_lan.service.StudentService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,6 +27,8 @@ import java.util.stream.Collectors;
 public class StudentServiceImpl implements StudentService {
 
     StudentRepository studentRepository;
+    UserRepository userRepository;
+    PasswordEncoder passwordEncoder;
     StudentMapper studentMapper;
 
     @Override
@@ -31,7 +37,26 @@ public class StudentServiceImpl implements StudentService {
             throw new AppException(ErrorCode.STUDENT_EXISTED);
         }
 
-        Student student = studentMapper.toStudent(request);
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
+
+        User user = User.builder()
+                .username(request.getUsername())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(Role.USER.name())
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .build();
+
+        Student student = Student.builder()
+                .studentCode(request.getStudentCode())
+                .className(request.getClassName())
+                .avatarUrl(request.getAvatarUrl())
+                .faceEmbedding(request.getFaceEmbedding())
+                .user(user)
+                .build();
+
         Student savedStudent = studentRepository.save(student);
         return studentMapper.toStudentResponse(savedStudent);
     }
@@ -63,6 +88,11 @@ public class StudentServiceImpl implements StudentService {
                 .orElseThrow(() -> new AppException(ErrorCode.STUDENT_NOT_EXISTED));
 
         studentMapper.updateStudent(student, request);
+        if (student.getUser() != null) {
+            if (request.getFullName() != null) student.getUser().setFullName(request.getFullName());
+            if (request.getEmail() != null) student.getUser().setEmail(request.getEmail());
+        }
+
         Student updatedStudent = studentRepository.save(student);
         return studentMapper.toStudentResponse(updatedStudent);
     }
