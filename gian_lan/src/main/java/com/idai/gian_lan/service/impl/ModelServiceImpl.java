@@ -3,11 +3,11 @@ package com.idai.gian_lan.service.impl;
 import com.idai.gian_lan.dto.request.ModelCreationRequest;
 import com.idai.gian_lan.dto.request.ModelUpdateRequest;
 import com.idai.gian_lan.dto.response.ModelResponse;
-import com.idai.gian_lan.entity.ModelStatistic;
+import com.idai.gian_lan.entity.Model;
 import com.idai.gian_lan.exception.AppException;
 import com.idai.gian_lan.exception.ErrorCode;
 import com.idai.gian_lan.mapper.ModelMapper;
-import com.idai.gian_lan.repository.ModelStatisticRepository;
+import com.idai.gian_lan.repository.ModelRepository;
 import com.idai.gian_lan.service.ModelService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ModelServiceImpl implements ModelService {
 
-    ModelStatisticRepository modelStatisticRepository;
+    ModelRepository modelRepository;
     ModelMapper modelMapper;
 
     private static final String STATUS_ACTIVE = "ACTIVE";
@@ -40,30 +40,30 @@ public class ModelServiceImpl implements ModelService {
             deactivateAllModels();
         }
 
-        ModelStatistic model = modelMapper.toModelStatistic(request);
+        Model model = modelMapper.toModel(request);
         model.setStatus(status);
 
-        ModelStatistic savedModel = modelStatisticRepository.save(model);
+        Model savedModel = modelRepository.save(model);
         return modelMapper.toModelResponse(savedModel);
     }
 
     @Override
     public List<ModelResponse> getAllModels() {
-        return modelStatisticRepository.findAll().stream()
+        return modelRepository.findAll().stream()
                 .map(modelMapper::toModelResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     public ModelResponse getModelById(String id) {
-        ModelStatistic model = modelStatisticRepository.findById(id)
+        Model model = modelRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MODEL_NOT_EXISTED));
         return modelMapper.toModelResponse(model);
     }
 
     @Override
     public ModelResponse getActiveModel() {
-        ModelStatistic activeModel = modelStatisticRepository.findByStatus(STATUS_ACTIVE)
+        Model activeModel = modelRepository.findAllByStatus(STATUS_ACTIVE).stream().findFirst()
                 .orElseThrow(() -> new AppException(ErrorCode.MODEL_NOT_EXISTED));
         return modelMapper.toModelResponse(activeModel);
     }
@@ -71,7 +71,7 @@ public class ModelServiceImpl implements ModelService {
     @Override
     @Transactional
     public ModelResponse updateModel(String id, ModelUpdateRequest request) {
-        ModelStatistic model = modelStatisticRepository.findById(id)
+        Model model = modelRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MODEL_NOT_EXISTED));
 
         if (request.getName() != null) {
@@ -89,49 +89,31 @@ public class ModelServiceImpl implements ModelService {
         if (request.getModelPath() != null) {
             model.setModelPath(request.getModelPath());
         }
-        if (request.getTotalSamples() != null) {
-            model.setTotalSamples(request.getTotalSamples());
-        }
-        if (request.getCheatingDetections() != null) {
-            model.setCheatingDetections(request.getCheatingDetections());
-        }
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
-            String newStatus = request.getStatus().toUpperCase();
-            if (STATUS_ACTIVE.equalsIgnoreCase(newStatus) && !STATUS_ACTIVE.equalsIgnoreCase(model.getStatus())) {
-                deactivateAllModels();
-            }
-            model.setStatus(newStatus);
+            model.setStatus(request.getStatus().toUpperCase());
         }
 
-        ModelStatistic updatedModel = modelStatisticRepository.save(model);
+        Model updatedModel = modelRepository.save(model);
         return modelMapper.toModelResponse(updatedModel);
     }
 
     @Override
     @Transactional
     public ModelResponse activateModel(String id) {
-        ModelStatistic model = modelStatisticRepository.findById(id)
+        Model model = modelRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MODEL_NOT_EXISTED));
 
-        deactivateAllModels();
-        model.setStatus(STATUS_ACTIVE);
-        ModelStatistic savedModel = modelStatisticRepository.save(model);
+        String newStatus = STATUS_ACTIVE.equalsIgnoreCase(model.getStatus()) ? STATUS_INACTIVE : STATUS_ACTIVE;
+        model.setStatus(newStatus);
+        Model savedModel = modelRepository.save(model);
         return modelMapper.toModelResponse(savedModel);
     }
 
     @Override
     @Transactional
     public void deleteModel(String id) {
-        ModelStatistic model = modelStatisticRepository.findById(id)
+        Model model = modelRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.MODEL_NOT_EXISTED));
-        modelStatisticRepository.delete(model);
-    }
-
-    private void deactivateAllModels() {
-        List<ModelStatistic> activeModels = modelStatisticRepository.findAllByStatus(STATUS_ACTIVE);
-        for (ModelStatistic m : activeModels) {
-            m.setStatus(STATUS_INACTIVE);
-        }
-        modelStatisticRepository.saveAll(activeModels);
+        modelRepository.delete(model);
     }
 }

@@ -27,8 +27,4 @@ public class ModelResponse {
     String status;
 
     String modelPath;
-
-    int totalSamples;
-
-    int cheatingDetections;
 }

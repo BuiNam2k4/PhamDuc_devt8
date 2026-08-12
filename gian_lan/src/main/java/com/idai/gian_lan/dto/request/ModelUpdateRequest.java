@@ -25,8 +25,4 @@ public class ModelUpdateRequest {
     String status;
 
     String modelPath;
-
-    Integer totalSamples;
-
-    Integer cheatingDetections;
 }

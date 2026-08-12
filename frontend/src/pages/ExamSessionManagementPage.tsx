@@ -20,13 +20,15 @@ import { examSessionService } from '../services/examSessionService';
 import { roomService } from '../services/roomService';
 import { subjectService } from '../services/subjectService';
 import { studentService } from '../services/studentService';
-import { ExamSession, Room, Subject, Student, ExamMode } from '../types';
+import { modelService } from '../services/modelService';
+import { ExamSession, Room, Subject, Student, ExamMode, Model } from '../types';
 
 export default function ExamSessionManagementPage() {
   const [sessions, setSessions] = useState<ExamSession[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,21 +45,24 @@ export default function ExamSessionManagementPage() {
   const [mode, setMode] = useState<ExamMode>(ExamMode.ONLINE);
   const [roomId, setRoomId] = useState('');
   const [subjectId, setSubjectId] = useState('');
+  const [modelId, setModelId] = useState('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [sessionsData, roomsData, subjectsData, studentsData] = await Promise.all([
+      const [sessionsData, roomsData, subjectsData, studentsData, modelsData] = await Promise.all([
         examSessionService.getAll(),
         roomService.getAll(),
         subjectService.getAll(),
-        studentService.getAll()
+        studentService.getAll(),
+        modelService.getAll()
       ]);
       setSessions(sessionsData || []);
       setRooms(roomsData || []);
       setSubjects(subjectsData || []);
       setStudents(studentsData || []);
+      setModels(modelsData || []);
       setError(null);
     } catch (err: any) {
       setError(err.message || 'Không thể tải dữ liệu ca thi');
@@ -76,6 +81,7 @@ export default function ExamSessionManagementPage() {
     setMode(ExamMode.ONLINE);
     setRoomId(rooms[0]?.id || '');
     setSubjectId(subjects[0]?.id || '');
+    setModelId(models.find(m => m.status === 'ACTIVE')?.id || models[0]?.id || '');
     setSelectedStudentIds([]);
     setIsCreateModalOpen(true);
   };
@@ -87,6 +93,7 @@ export default function ExamSessionManagementPage() {
     setMode(session.mode || ExamMode.ONLINE);
     setRoomId(session.room?.id || '');
     setSubjectId(session.subject?.id || '');
+    setModelId(session.model?.id || '');
     
     // Load student IDs currently assigned to this session
     const currentStudentIds = session.examSessionDetails?.map(detail => detail.student?.id).filter(Boolean) as string[] || [];
@@ -101,8 +108,9 @@ export default function ExamSessionManagementPage() {
         startTime: new Date(startTime).toISOString(),
         duration,
         mode,
-        roomId,
+        roomId: mode === ExamMode.ONLINE ? undefined : roomId,
         subjectId,
+        modelId: modelId || undefined,
         studentIds: selectedStudentIds
       });
       setIsCreateModalOpen(false);
@@ -120,8 +128,9 @@ export default function ExamSessionManagementPage() {
         startTime: new Date(startTime).toISOString(),
         duration,
         mode,
-        roomId,
-        subjectId
+        roomId: mode === ExamMode.ONLINE ? undefined : roomId,
+        subjectId,
+        modelId: modelId || undefined
       });
       
       // Update assigned students if list changed
@@ -225,6 +234,7 @@ export default function ExamSessionManagementPage() {
                   <th className="p-3.5">Môn Thi</th>
                   <th className="p-3.5">Phòng Thi</th>
                   <th className="p-3.5">Hình Thức</th>
+                  <th className="p-3.5">Mô hình AI</th>
                   <th className="p-3.5">Thời Gian Bắt Đầu</th>
                   <th className="p-3.5">Thời Lượng</th>
                   <th className="p-3.5">Thí Sinh Đăng Ký</th>
@@ -247,8 +257,14 @@ export default function ExamSessionManagementPage() {
                       <div className="flex items-center gap-2">
                         <Building className="w-4 h-4 text-slate-400" />
                         <div>
-                          <div className="text-slate-200">{session.room?.name}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">{session.room?.roomCode}</div>
+                          {session.mode === ExamMode.ONLINE ? (
+                            <span className="text-slate-400 italic">Không yêu cầu (ONLINE)</span>
+                          ) : (
+                            <>
+                              <div className="text-slate-200">{session.room?.name}</div>
+                              <div className="text-[10px] text-slate-400 font-mono">{session.room?.roomCode}</div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -261,6 +277,16 @@ export default function ExamSessionManagementPage() {
                         {session.mode === ExamMode.ONLINE ? <Video className="w-3 h-3" /> : <Monitor className="w-3 h-3" />}
                         {session.mode === ExamMode.ONLINE ? 'ONLINE' : 'OFFLINE'}
                       </span>
+                    </td>
+                    <td className="p-3.5">
+                      {session.model ? (
+                        <div>
+                          <div className="text-white font-semibold">{session.model.name}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">{session.model.precision ? `P: ${session.model.precision}` : ''}</div>
+                        </div>
+                      ) : (
+                        <span className="text-slate-500 italic">Mặc định</span>
+                      )}
                     </td>
                     <td className="p-3.5 font-mono text-slate-300">
                       {session.startTime ? new Date(session.startTime).toLocaleString('vi-VN') : 'Chưa thiết lập'}
@@ -327,15 +353,22 @@ export default function ExamSessionManagementPage() {
 
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-400">Phòng Thi</label>
-                  <select
-                    value={roomId}
-                    onChange={(e) => setRoomId(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-cyan-500 cursor-pointer"
-                  >
-                    {rooms.map(room => (
-                      <option key={room.id} value={room.id}>{room.name} ({room.roomCode})</option>
-                    ))}
-                  </select>
+                  {mode === ExamMode.ONLINE ? (
+                    <div className="w-full bg-slate-800/50 border border-slate-700/50 text-slate-400 rounded-lg px-3 py-2 text-xs flex items-center gap-1.5 h-[38px]">
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                      Tự động gán phòng ngẫu nhiên (ONLINE)
+                    </div>
+                  ) : (
+                    <select
+                      value={roomId}
+                      onChange={(e) => setRoomId(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-cyan-500 cursor-pointer"
+                    >
+                      {rooms.map(room => (
+                        <option key={room.id} value={room.id}>{room.name} ({room.roomCode})</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -363,33 +396,49 @@ export default function ExamSessionManagementPage() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400">Hình Thức Ca Thi</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="mode"
-                      value={ExamMode.ONLINE}
-                      checked={mode === ExamMode.ONLINE}
-                      onChange={() => setMode(ExamMode.ONLINE)}
-                      className="accent-cyan-500"
-                    />
-                    <Video className="w-4 h-4 text-cyan-400" />
-                    ONLINE (Giám sát camera sinh viên)
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="mode"
-                      value={ExamMode.OFFLINE}
-                      checked={mode === ExamMode.OFFLINE}
-                      onChange={() => setMode(ExamMode.OFFLINE)}
-                      className="accent-indigo-500"
-                    />
-                    <Monitor className="w-4 h-4 text-indigo-400" />
-                    OFFLINE (Giám sát camera phòng thi cố định)
-                  </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Hình Thức Ca Thi</label>
+                  <div className="flex gap-4 h-[38px] items-center">
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="mode"
+                        value={ExamMode.ONLINE}
+                        checked={mode === ExamMode.ONLINE}
+                        onChange={() => setMode(ExamMode.ONLINE)}
+                        className="accent-cyan-500"
+                      />
+                      <Video className="w-4 h-4 text-cyan-400" />
+                      ONLINE
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="mode"
+                        value={ExamMode.OFFLINE}
+                        checked={mode === ExamMode.OFFLINE}
+                        onChange={() => setMode(ExamMode.OFFLINE)}
+                        className="accent-indigo-500"
+                      />
+                      <Monitor className="w-4 h-4 text-indigo-400" />
+                      OFFLINE
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Mô hình AI nhận diện</label>
+                  <select
+                    value={modelId}
+                    onChange={(e) => setModelId(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-cyan-500 cursor-pointer"
+                  >
+                    <option value="">-- Mặc định --</option>
+                    {models.filter(m => m.status === 'ACTIVE').map(model => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -464,15 +513,22 @@ export default function ExamSessionManagementPage() {
 
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-400">Phòng Thi</label>
-                  <select
-                    value={roomId}
-                    onChange={(e) => setRoomId(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-cyan-500 cursor-pointer"
-                  >
-                    {rooms.map(room => (
-                      <option key={room.id} value={room.id}>{room.name} ({room.roomCode})</option>
-                    ))}
-                  </select>
+                  {mode === ExamMode.ONLINE ? (
+                    <div className="w-full bg-slate-800/50 border border-slate-700/50 text-slate-400 rounded-lg px-3 py-2 text-xs flex items-center gap-1.5 h-[38px]">
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                      Tự động gán phòng ngẫu nhiên (ONLINE)
+                    </div>
+                  ) : (
+                    <select
+                      value={roomId}
+                      onChange={(e) => setRoomId(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-cyan-500 cursor-pointer"
+                    >
+                      {rooms.map(room => (
+                        <option key={room.id} value={room.id}>{room.name} ({room.roomCode})</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -500,33 +556,49 @@ export default function ExamSessionManagementPage() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-slate-400">Hình Thức Ca Thi</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="mode"
-                      value={ExamMode.ONLINE}
-                      checked={mode === ExamMode.ONLINE}
-                      onChange={() => setMode(ExamMode.ONLINE)}
-                      className="accent-cyan-500"
-                    />
-                    <Video className="w-4 h-4 text-cyan-400" />
-                    ONLINE (Giám sát camera sinh viên)
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="mode"
-                      value={ExamMode.OFFLINE}
-                      checked={mode === ExamMode.OFFLINE}
-                      onChange={() => setMode(ExamMode.OFFLINE)}
-                      className="accent-indigo-500"
-                    />
-                    <Monitor className="w-4 h-4 text-indigo-400" />
-                    OFFLINE (Giám sát camera phòng thi cố định)
-                  </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Hình Thức Ca Thi</label>
+                  <div className="flex gap-4 h-[38px] items-center">
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="mode"
+                        value={ExamMode.ONLINE}
+                        checked={mode === ExamMode.ONLINE}
+                        onChange={() => setMode(ExamMode.ONLINE)}
+                        className="accent-cyan-500"
+                      />
+                      <Video className="w-4 h-4 text-cyan-400" />
+                      ONLINE
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="mode"
+                        value={ExamMode.OFFLINE}
+                        checked={mode === ExamMode.OFFLINE}
+                        onChange={() => setMode(ExamMode.OFFLINE)}
+                        className="accent-indigo-500"
+                      />
+                      <Monitor className="w-4 h-4 text-indigo-400" />
+                      OFFLINE
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Mô hình AI nhận diện</label>
+                  <select
+                    value={modelId}
+                    onChange={(e) => setModelId(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-cyan-500 cursor-pointer"
+                  >
+                    <option value="">-- Mặc định --</option>
+                    {models.filter(m => m.status === 'ACTIVE').map(model => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

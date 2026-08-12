@@ -1,12 +1,11 @@
 package com.idai.gian_lan.entity;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Inheritance;
-import jakarta.persistence.InheritanceType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -20,7 +19,6 @@ import java.util.List;
 
 @Entity
 @Table(name = "models")
-@Inheritance(strategy = InheritanceType.JOINED)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -34,8 +32,10 @@ public class Model {
 
     String name;
 
+    @Column(name = "`precision`")
     String precision;
 
+    @Column(name = "`recall`")
     String recall;
 
     String f1Score;

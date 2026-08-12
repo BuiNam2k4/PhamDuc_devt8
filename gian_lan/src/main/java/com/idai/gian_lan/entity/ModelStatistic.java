@@ -1,7 +1,5 @@
 package com.idai.gian_lan.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,8 +8,11 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 
-@Entity
-@Table(name = "model_statistics")
+/**
+ * Class thống kê mô hình - KHÔNG LƯU VÀO CSDL.
+ * Chỉ dùng để tính toán và hiển thị ở tầng service/controller.
+ * Kế thừa từ Model entity nhưng bản thân không phải Entity.
+ */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor

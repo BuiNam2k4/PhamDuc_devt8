@@ -7,27 +7,13 @@ import {
   Trash2,
   Edit3,
   Zap,
-  TrendingUp,
-  Activity,
   BarChart2,
   FileCheck,
   X
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ModelStatistic, ModelCreationRequest, ModelUpdateRequest } from '../types';
 import { modelService } from '../services';
 import { MainLayoutContextType } from '../layouts/MainLayout';
-
-const epochMetrics = Array.from({ length: 20 }, (_, i) => {
-  const epoch = (i + 1) * 2.5;
-  return {
-    epoch: `Ep ${Math.round(epoch)}`,
-    trainLoss: Number((0.85 * Math.exp(-0.1 * i) + 0.08).toFixed(3)),
-    valLoss: Number((0.92 * Math.exp(-0.09 * i) + 0.12).toFixed(3)),
-    mAP50: Number(Math.min(0.96, (0.45 + 0.5 * (1 - Math.exp(-0.15 * i)))).toFixed(3)),
-    mAP50_95: Number(Math.min(0.88, (0.30 + 0.55 * (1 - Math.exp(-0.12 * i)))).toFixed(3)),
-  };
-});
 
 const confusionMatrix = [
   { class: 'Dùng điện thoại', phone: 92.4, book: 3.1, head: 4.5 },
@@ -89,19 +75,16 @@ export default function ModelManagementPage() {
     fetchModels();
   }, []);
 
-  const handleActivate = async (id: string) => {
+  const handleToggleStatus = async (model: ModelStatistic) => {
     try {
-      await modelService.activate(id);
-      showToast('Đã kích hoạt mô hình thành công cho toàn bộ phòng thi!', 'success');
+      const response = await modelService.activate(model.id);
+      const isNowActive = response?.status === 'ACTIVE';
+      showToast(isNowActive ? 'Đã kích hoạt mô hình!' : 'Đã hủy kích hoạt mô hình!', 'success');
       fetchModels();
     } catch (_err) {
-      setModels(prev => prev.map(m => ({
-        ...m,
-        status: m.id === id ? 'ACTIVE' : 'INACTIVE'
-      })));
-      const activated = models.find(m => m.id === id);
-      if (activated) setActiveModel({ ...activated, status: 'ACTIVE' });
-      showToast('Đã chuyển mô hình thành trạng thái ACTIVE (Hot-reload)', 'success');
+      const newStatus = model.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      setModels(prev => prev.map(m => m.id === model.id ? { ...m, status: newStatus } : m));
+      showToast(`Đã chuyển mô hình thành trạng thái ${newStatus}`, 'success');
     }
   };
 
@@ -212,135 +195,81 @@ export default function ModelManagementPage() {
         </button>
       </div>
 
-      {/* Model Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {models.map((model) => {
-          const isActive = model.status === 'ACTIVE';
-          return (
-            <div
-              key={model.id}
-              className={`glass-panel p-5 rounded-xl border transition-all duration-300 relative flex flex-col justify-between ${isActive
-                ? 'border-emerald-500/50 bg-gradient-to-b from-emerald-950/30 to-slate-900 shadow-xl shadow-emerald-950/30'
-                : 'border-slate-800 hover:border-slate-700'
-                }`}
-            >
-              <div>
-                {/* Active Badge */}
-                <div className="flex items-center justify-between mb-3">
-                  <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full border flex items-center gap-1.5 ${isActive
-                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-active-glow'
-                    : 'bg-slate-800 text-slate-400 border-slate-700'
-                    }`}>
-                    {isActive ? <CheckCircle className="w-3 h-3 text-emerald-400" /> : null}
-                    {isActive ? 'ĐANG KÍCH HOẠT (ACTIVE)' : 'LƯU TRỮ (INACTIVE)'}
-                  </span>
-
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => handleOpenModal(model)} className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer">
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    {!isActive && (
-                      <button onClick={() => handleDelete(model.id)} className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-red-400 transition-colors cursor-pointer">
-                        <Trash2 className="w-3.5 h-3.5" />
+      {/* Model Table */}
+      <div className="glass-panel rounded-xl border border-slate-800 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-900/60 text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                <th className="p-3.5">Tên Mô Hình</th>
+                <th className="p-3.5">Đường Dẫn File</th>
+                <th className="p-3.5">Độ Chính Xác (P/R/F1)</th>
+                <th className="p-3.5 text-center">Mẫu Huấn Luyện</th>
+                <th className="p-3.5 text-center">Trạng Thái</th>
+                <th className="p-3.5 text-right">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60">
+              {models.map((model) => {
+                const isActive = model.status === 'ACTIVE';
+                return (
+                  <tr key={model.id} className={`hover:bg-slate-900/40 transition-colors ${isActive ? 'bg-emerald-950/5' : ''}`}>
+                    <td className="p-3.5">
+                      <div className="font-semibold text-white">{model.name}</div>
+                    </td>
+                    <td className="p-3.5 font-mono text-slate-400 max-w-[200px] truncate" title={model.modelPath}>
+                      {model.modelPath}
+                    </td>
+                    <td className="p-3.5">
+                      <div className="flex gap-2">
+                        <span className="px-1.5 py-0.5 rounded bg-slate-900 text-cyan-400 border border-slate-800">P: {model.precision || '88.0%'}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-slate-900 text-indigo-400 border border-slate-800">R: {model.recall || '85.0%'}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-slate-900 text-emerald-400 border border-slate-800">F1: {model.f1Score || '86.5%'}</span>
+                      </div>
+                    </td>
+                    <td className="p-3.5 text-center font-mono text-slate-300">
+                      {model.totalSamples || 3000}
+                    </td>
+                    <td className="p-3.5 text-center">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1 ${isActive
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700'
+                        }`}>
+                        {isActive ? <CheckCircle className="w-3 h-3 text-emerald-400" /> : null}
+                        {isActive ? 'ACTIVE' : 'INACTIVE'}
+                      </span>
+                    </td>
+                    <td className="p-3.5 text-right space-x-2">
+                      <button
+                        onClick={() => handleToggleStatus(model)}
+                        className={`px-2 py-1 rounded font-medium inline-flex items-center gap-1 text-[11px] shadow-sm cursor-pointer transition-colors ${isActive
+                          ? 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30'
+                          : 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30'
+                        }`}
+                      >
+                        <Zap className="w-3 h-3" /> {isActive ? 'Tạm ngưng' : 'Kích hoạt'}
                       </button>
-                    )}
-                  </div>
-                </div>
-
-                <h3 className="text-sm font-bold text-white tracking-wide">{model.name}</h3>
-                <p className="text-[11px] text-slate-400 font-mono mt-0.5 truncate">{model.modelPath}</p>
-
-                {/* Metrics Breakdown */}
-                <div className="grid grid-cols-3 gap-2 my-4 p-3 rounded-lg bg-slate-950/70 border border-slate-800 text-center">
-                  <div>
-                    <span className="text-[10px] text-slate-500 font-medium block uppercase">Precision</span>
-                    <span className="text-xs font-extrabold text-cyan-400">{model.precision || '88.0%'}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 font-medium block uppercase">Recall</span>
-                    <span className="text-xs font-extrabold text-indigo-400">{model.recall || '85.0%'}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 font-medium block uppercase">F1-Score</span>
-                    <span className="text-xs font-extrabold text-emerald-400">{model.f1Score || '86.5%'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Button */}
-              <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-xs">
-                <span className="text-[11px] text-slate-400">Mẫu huấn luyện: <strong className="text-slate-200">{model.totalSamples || 3000}</strong></span>
-                {!isActive ? (
-                  <button
-                    onClick={() => handleActivate(model.id)}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600/80 hover:bg-emerald-600 text-white font-semibold text-[11px] flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
-                  >
-                    <Zap className="w-3.5 h-3.5" />
-                    Kích Hoạt Ngay
-                  </button>
-                ) : (
-                  <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Đang chạy camera
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Visual Evaluation Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Loss Curves */}
-        <div className="glass-panel p-5 rounded-xl border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-indigo-400" />
-              Biểu Đồ Độ Lỗi Huấn Luyện (Train Loss vs Val Loss Curves)
-            </h3>
-            <span className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded">YOLOv8 Loss</span>
-          </div>
-
-          <div className="h-60 w-full pt-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={epochMetrics} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="epoch" stroke="#64748b" fontSize={10} />
-                <YAxis stroke="#64748b" fontSize={10} domain={[0, 1]} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '11px' }} />
-                <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Line type="monotone" dataKey="trainLoss" name="Train Loss" stroke="#6366f1" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="valLoss" name="Validation Loss" stroke="#ef4444" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Accuracy & mAP Curves */}
-        <div className="glass-panel p-5 rounded-xl border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Activity className="w-4 h-4 text-cyan-400" />
-              Biểu Đồ Độ Chính Xác (mAP@0.5 & mAP@0.5:0.95)
-            </h3>
-            <span className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded">Accuracy Trend</span>
-          </div>
-
-          <div className="h-60 w-full pt-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={epochMetrics} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="epoch" stroke="#64748b" fontSize={10} />
-                <YAxis stroke="#64748b" fontSize={10} domain={[0, 1]} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '11px' }} />
-                <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Line type="monotone" dataKey="mAP50" name="mAP@0.5" stroke="#10b981" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="mAP50_95" name="mAP@0.5:0.95" stroke="#06b6d4" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                      <button
+                        onClick={() => handleOpenModal(model)}
+                        className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium inline-flex items-center gap-1 border border-slate-700 cursor-pointer"
+                      >
+                        <Edit3 className="w-3 h-3 text-cyan-400" /> Sửa
+                      </button>
+                      <button
+                        onClick={() => handleDelete(model.id)}
+                        className="px-2 py-1 rounded bg-red-950/40 hover:bg-red-950/80 text-red-300 font-medium inline-flex items-center gap-1 border border-red-900/40 cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-400" /> Xóa
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
+
 
       {/* Confusion Matrix & Acceptance Benchmarks */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
