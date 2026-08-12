@@ -27,11 +27,12 @@ public class ExamSessionCreationRequest {
 
     ExamMode mode;
 
-    @NotNull(message = "Room ID is required")
     String roomId;
 
     @NotNull(message = "Subject ID is required")
     String subjectId;
+
+    String modelId;
 
     List<String> studentIds;
 }

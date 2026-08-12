@@ -2,6 +2,7 @@ import { Room } from './room';
 import { Subject } from './subject';
 import { Student } from './student';
 import { Camera } from './camera';
+import { Model } from './model';
 
 export enum ExamStatus {
   SCHEDULED = 'SCHEDULED',
@@ -24,6 +25,7 @@ export interface ExamSession {
   mode?: ExamMode;
   room?: Room;
   subject?: Subject;
+  model?: Model;
   examSessionDetails?: ExamSessionDetail[];
 }
 
@@ -47,8 +49,9 @@ export interface ExamSessionCreationRequest {
   startTime: string;
   duration: number;
   mode: ExamMode;
-  roomId: string;
+  roomId?: string;
   subjectId: string;
+  modelId?: string;
   studentIds?: string[];
 }
 
@@ -58,4 +61,5 @@ export interface ExamSessionUpdateRequest {
   mode?: ExamMode;
   roomId?: string;
   subjectId?: string;
+  modelId?: string;
 }

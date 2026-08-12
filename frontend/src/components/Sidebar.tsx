@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Cpu, 
-  Video, 
-  FileVideo, 
+import {
+  LayoutDashboard,
+  Cpu,
+  Video,
+  FileVideo,
   AlertTriangle,
   ShieldCheck,
   ChevronRight,
@@ -29,7 +29,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { path: '/admin', label: 'Tổng quan Hệ thống', icon: LayoutDashboard, badge: null },
   { path: '/admin/realtime', label: 'Giám sát Camera Live', icon: Video, badge: 'LIVE' },
-  { path: '/admin/offline', label: 'Phân tích Video Off', icon: FileVideo, badge: null },
+  // { path: '/admin/offline', label: 'Phân tích Video Off', icon: FileVideo, badge: null },
   { path: '/admin/logs', label: 'Nhật ký Vi phạm', icon: AlertTriangle, badge: 'LOGS' },
   { path: '/admin/models', label: 'Quản lý Mô hình AI', icon: Cpu, badge: 'HOT' },
 ];
@@ -89,10 +89,9 @@ export default function Sidebar() {
                 to={item.path}
                 end={item.path === '/admin'}
                 className={({ isActive }) =>
-                  `w-full flex items-center justify-between px-3 py-2 rounded-lg font-medium text-xs transition-all duration-200 cursor-pointer ${
-                    isActive
-                      ? 'bg-gradient-to-r from-indigo-600/90 to-indigo-700/80 text-white shadow-md shadow-indigo-600/20 border border-indigo-500/30'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  `w-full flex items-center justify-between px-3 py-2 rounded-lg font-medium text-xs transition-all duration-200 cursor-pointer ${isActive
+                    ? 'bg-gradient-to-r from-indigo-600/90 to-indigo-700/80 text-white shadow-md shadow-indigo-600/20 border border-indigo-500/30'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                   }`
                 }
               >
@@ -102,14 +101,13 @@ export default function Sidebar() {
                       <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-300' : 'text-slate-400'}`} />
                       <span>{item.label}</span>
                     </div>
-                    
+
                     <div className="flex items-center gap-1.5">
                       {item.badge && (
-                        <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
-                          item.badge === 'LIVE' ? 'bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse' :
-                          item.badge === 'HOT' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' :
-                          'bg-slate-800 text-slate-400'
-                        }`}>
+                        <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${item.badge === 'LIVE' ? 'bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse' :
+                            item.badge === 'HOT' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' :
+                              'bg-slate-800 text-slate-400'
+                          }`}>
                           {item.badge}
                         </span>
                       )}
@@ -132,10 +130,9 @@ export default function Sidebar() {
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `w-full flex items-center justify-between px-3 py-2 rounded-lg font-medium text-xs transition-all duration-200 cursor-pointer ${
-                    isActive
-                      ? 'bg-gradient-to-r from-indigo-600/90 to-indigo-700/80 text-white shadow-md shadow-indigo-600/20 border border-indigo-500/30'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  `w-full flex items-center justify-between px-3 py-2 rounded-lg font-medium text-xs transition-all duration-200 cursor-pointer ${isActive
+                    ? 'bg-gradient-to-r from-indigo-600/90 to-indigo-700/80 text-white shadow-md shadow-indigo-600/20 border border-indigo-500/30'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                   }`
                 }
               >

@@ -50,6 +50,10 @@ public class ExamSession {
     @JoinColumn(name = "subject_id")
     Subject subject;
 
+    @ManyToOne
+    @JoinColumn(name = "model_id")
+    Model model;
+
     @OneToMany(mappedBy = "examSession", cascade = CascadeType.ALL)
     List<ExamSessionDetail> examSessionDetails;
 }

@@ -27,10 +27,13 @@
 }
 
 @keyframes alert-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     border-color: rgba(239, 68, 68, 0.9);
     box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
   }
+
   50% {
     border-color: rgba(239, 68, 68, 0.3);
     box-shadow: 0 0 5px rgba(239, 68, 68, 0.2);
@@ -42,10 +45,13 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
     filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.8));
   }
+
   50% {
     opacity: 0.7;
     filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.3));
@@ -61,13 +67,16 @@
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: #0f172a;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #334155;
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }

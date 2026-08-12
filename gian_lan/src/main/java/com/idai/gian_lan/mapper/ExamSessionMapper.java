@@ -12,11 +12,12 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
-@Mapper(componentModel = "spring", uses = {RoomMapper.class, SubjectMapper.class, StudentMapper.class})
+@Mapper(componentModel = "spring", uses = {RoomMapper.class, SubjectMapper.class, StudentMapper.class, ModelMapper.class})
 public interface ExamSessionMapper {
 
     @Mapping(target = "room", ignore = true)
     @Mapping(target = "subject", ignore = true)
+    @Mapping(target = "model", ignore = true)
     @Mapping(target = "examSessionDetails", ignore = true)
     ExamSession toExamSession(ExamSessionCreationRequest request);
 
@@ -27,5 +28,6 @@ public interface ExamSessionMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "room", ignore = true)
     @Mapping(target = "subject", ignore = true)
+    @Mapping(target = "model", ignore = true)
     void updateExamSession(@MappingTarget ExamSession examSession, ExamSessionUpdateRequest request);
 }

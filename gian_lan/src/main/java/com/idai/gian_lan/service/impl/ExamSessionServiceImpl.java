@@ -1,5 +1,6 @@
 package com.idai.gian_lan.service.impl;
 
+import com.idai.gian_lan.dto.enums.ExamMode;
 import com.idai.gian_lan.dto.enums.ExamStatus;
 import com.idai.gian_lan.dto.request.ExamSessionCreationRequest;
 import com.idai.gian_lan.dto.request.ExamSessionUpdateRequest;
@@ -9,6 +10,7 @@ import com.idai.gian_lan.entity.ExamSessionDetail;
 import com.idai.gian_lan.entity.Room;
 import com.idai.gian_lan.entity.Student;
 import com.idai.gian_lan.entity.Subject;
+import com.idai.gian_lan.entity.Model;
 import com.idai.gian_lan.exception.AppException;
 import com.idai.gian_lan.exception.ErrorCode;
 import com.idai.gian_lan.mapper.ExamSessionMapper;
@@ -17,6 +19,7 @@ import com.idai.gian_lan.repository.ExamSessionRepository;
 import com.idai.gian_lan.repository.RoomRepository;
 import com.idai.gian_lan.repository.StudentRepository;
 import com.idai.gian_lan.repository.SubjectRepository;
+import com.idai.gian_lan.repository.ModelRepository;
 import com.idai.gian_lan.service.ExamSessionService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -38,20 +41,39 @@ public class ExamSessionServiceImpl implements ExamSessionService {
     RoomRepository roomRepository;
     SubjectRepository subjectRepository;
     StudentRepository studentRepository;
+    ModelRepository modelRepository;
     ExamSessionMapper examSessionMapper;
 
     @Override
     @Transactional
     public ExamSessionResponse createExamSession(ExamSessionCreationRequest request) {
-        Room room = roomRepository.findById(request.getRoomId())
-                .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_EXISTED));
+        Room room;
+
+        // Nếu mode ONLINE -> không cần phòng (room = null)
+        if (request.getMode() == ExamMode.ONLINE) {
+            room = null;
+        } else {
+            // OFFLINE -> bắt buộc chọn phòng
+            if (request.getRoomId() == null || request.getRoomId().isBlank()) {
+                throw new AppException(ErrorCode.ROOM_NOT_EXISTED);
+            }
+            room = roomRepository.findById(request.getRoomId())
+                    .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_EXISTED));
+        }
 
         Subject subject = subjectRepository.findById(request.getSubjectId())
                 .orElseThrow(() -> new AppException(ErrorCode.SUBJECT_NOT_EXISTED));
 
+        Model model = null;
+        if (request.getModelId() != null && !request.getModelId().isBlank()) {
+            model = modelRepository.findById(request.getModelId())
+                    .orElseThrow(() -> new AppException(ErrorCode.MODEL_NOT_EXISTED));
+        }
+
         ExamSession examSession = examSessionMapper.toExamSession(request);
         examSession.setRoom(room);
         examSession.setSubject(subject);
+        examSession.setModel(model);
 
         List<ExamSessionDetail> details = new ArrayList<>();
         if (request.getStudentIds() != null && !request.getStudentIds().isEmpty()) {
@@ -97,7 +119,10 @@ public class ExamSessionServiceImpl implements ExamSessionService {
 
         examSessionMapper.updateExamSession(examSession, request);
 
-        if (request.getRoomId() != null) {
+        ExamMode currentMode = request.getMode() != null ? request.getMode() : examSession.getMode();
+        if (currentMode == ExamMode.ONLINE) {
+            examSession.setRoom(null);
+        } else if (request.getRoomId() != null) {
             Room room = roomRepository.findById(request.getRoomId())
                     .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_EXISTED));
             examSession.setRoom(room);
@@ -107,6 +132,15 @@ public class ExamSessionServiceImpl implements ExamSessionService {
             Subject subject = subjectRepository.findById(request.getSubjectId())
                     .orElseThrow(() -> new AppException(ErrorCode.SUBJECT_NOT_EXISTED));
             examSession.setSubject(subject);
+        }
+
+        if (request.getModelId() != null) {
+            Model model = null;
+            if (!request.getModelId().isBlank()) {
+                model = modelRepository.findById(request.getModelId())
+                        .orElseThrow(() -> new AppException(ErrorCode.MODEL_NOT_EXISTED));
+            }
+            examSession.setModel(model);
         }
 
         ExamSession updatedSession = examSessionRepository.save(examSession);

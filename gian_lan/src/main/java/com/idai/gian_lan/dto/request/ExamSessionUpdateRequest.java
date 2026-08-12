@@ -26,4 +26,6 @@ public class ExamSessionUpdateRequest {
     String roomId;
 
     String subjectId;
+
+    String modelId;
 }

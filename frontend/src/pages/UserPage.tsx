@@ -287,7 +287,9 @@ export default function UserPage() {
                       <div className="flex items-center gap-3">
                         <div className="text-right hidden sm:block">
                           <span className="text-[10px] text-slate-500 block uppercase font-bold">Phòng thi</span>
-                          <span className="text-xs text-slate-200 font-semibold">{session.room?.name || 'N/A'}</span>
+                          <span className="text-xs text-slate-200 font-semibold">
+                            {session.mode === 'ONLINE' ? 'Trực tuyến' : (session.room?.name || 'N/A')}
+                          </span>
                         </div>
                         
                         <button 

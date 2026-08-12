@@ -24,5 +24,6 @@ public class ExamSessionResponse {
     ExamMode mode;
     RoomResponse room;
     SubjectResponse subject;
+    ModelResponse model;
     List<ExamSessionDetailResponse> examSessionDetails;
 }

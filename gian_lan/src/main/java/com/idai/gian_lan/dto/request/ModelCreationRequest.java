@@ -23,8 +23,4 @@ public class ModelCreationRequest {
     String status;
 
     String modelPath;
-
-    int totalSamples;
-
-    int cheatingDetections;
 }
