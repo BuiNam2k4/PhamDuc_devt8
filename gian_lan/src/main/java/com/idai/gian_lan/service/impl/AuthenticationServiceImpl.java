@@ -7,10 +7,12 @@ import com.idai.gian_lan.dto.request.UserRegisterRequest;
 import com.idai.gian_lan.dto.response.AuthenticationResponse;
 import com.idai.gian_lan.dto.response.IntrospectResponse;
 import com.idai.gian_lan.dto.response.UserResponse;
+import com.idai.gian_lan.entity.Student;
 import com.idai.gian_lan.entity.User;
 import com.idai.gian_lan.exception.AppException;
 import com.idai.gian_lan.exception.ErrorCode;
 import com.idai.gian_lan.mapper.UserMapper;
+import com.idai.gian_lan.repository.StudentRepository;
 import com.idai.gian_lan.repository.UserRepository;
 import com.idai.gian_lan.service.AuthenticationService;
 import com.nimbusds.jose.*;
@@ -39,6 +41,7 @@ import java.util.UUID;
 public class AuthenticationServiceImpl implements AuthenticationService {
 
     final UserRepository userRepository;
+    final StudentRepository studentRepository;
     final PasswordEncoder passwordEncoder;
     final UserMapper userMapper;
 
@@ -51,17 +54,23 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
 
-        String assignedRole = (request.getRole() != null && !request.getRole().isBlank())
-                ? request.getRole().toUpperCase()
-                : Role.USER.name();
+        Student student = Student.builder()
+                .username(request.getUsername())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(Role.USER.name())
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .studentCode(request.getStudentCode() != null && !request.getStudentCode().isBlank() 
+                        ? request.getStudentCode() 
+                        : "SV" + System.currentTimeMillis() % 100000)
+                .className(request.getClassName())
+                .build();
 
-        User user = userMapper.toUser(request);
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(assignedRole);
-
-        user = userRepository.save(user);
-
-        return userMapper.toUserResponse(user);
+        Student savedStudent = studentRepository.save(student);
+        UserResponse response = userMapper.toUserResponse(savedStudent);
+        response.setStudentCode(savedStudent.getStudentCode());
+        response.setClassName(savedStudent.getClassName());
+        return response;
     }
 
     @Override

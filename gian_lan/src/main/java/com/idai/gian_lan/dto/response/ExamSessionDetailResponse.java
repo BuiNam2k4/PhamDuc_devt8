@@ -1,5 +1,6 @@
 package com.idai.gian_lan.dto.response;
 
+import com.idai.gian_lan.dto.enums.ExamStatus;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,15 +13,11 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class StudentResponse {
+public class ExamSessionDetailResponse {
 
     String id;
-    String username;
-    String role;
-    String studentCode;
-    String fullName;
-    String email;
-    String className;
-    String avatarUrl;
-    String faceEmbedding;
+    ExamStatus status;
+    String seatNumber;
+    String note;
+    StudentResponse student;
 }

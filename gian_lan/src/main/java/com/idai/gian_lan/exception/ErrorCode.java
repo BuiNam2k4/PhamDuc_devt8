@@ -20,7 +20,8 @@ public enum ErrorCode {
     ROOM_NOT_EXISTED(1011, "Room not existed", HttpStatus.NOT_FOUND),
     ROOM_EXISTED(1012, "Room code already existed", HttpStatus.BAD_REQUEST),
     SUBJECT_NOT_EXISTED(1013, "Subject not existed", HttpStatus.NOT_FOUND),
-    SUBJECT_EXISTED(1014, "Subject code already existed", HttpStatus.BAD_REQUEST);
+    SUBJECT_EXISTED(1014, "Subject code already existed", HttpStatus.BAD_REQUEST),
+    EXAM_SESSION_NOT_EXISTED(1015, "Exam session not existed", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;

@@ -21,4 +21,9 @@ public class UserRegisterRequest {
     String password;
 
     String role;
+
+    String fullName;
+    String email;
+    String studentCode;
+    String className;
 }

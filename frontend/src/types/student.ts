@@ -1,8 +1,8 @@
-export interface Student {
-  id: string;
+import { User } from './user';
+
+export interface Student extends User {
   studentCode: string;
-  fullName: string;
-  email?: string;
+  fullName: string; // Required for student profile
   className?: string;
   avatarUrl?: string;
   faceEmbedding?: string;
@@ -11,6 +11,8 @@ export interface Student {
 export interface StudentResponse extends Student {}
 
 export interface StudentCreationRequest {
+  username: string;
+  password?: string;
   studentCode: string;
   fullName: string;
   email?: string;

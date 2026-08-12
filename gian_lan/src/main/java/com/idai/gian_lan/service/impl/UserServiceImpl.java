@@ -1,5 +1,7 @@
 package com.idai.gian_lan.service.impl;
 
+import com.idai.gian_lan.dto.enums.Role;
+import com.idai.gian_lan.dto.request.UserCreationRequest;
 import com.idai.gian_lan.dto.response.UserResponse;
 import com.idai.gian_lan.entity.User;
 import com.idai.gian_lan.exception.AppException;
@@ -11,6 +13,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -19,7 +22,30 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
 
     UserRepository userRepository;
+    PasswordEncoder passwordEncoder;
     UserMapper userMapper;
+
+    @Override
+    public UserResponse createUser(UserCreationRequest request) {
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
+
+        String role = (request.getRole() != null && !request.getRole().isBlank())
+                ? request.getRole().toUpperCase()
+                : Role.ADMIN.name();
+
+        User user = User.builder()
+                .username(request.getUsername())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(role)
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .build();
+
+        User savedUser = userRepository.save(user);
+        return userMapper.toUserResponse(savedUser);
+    }
 
     @Override
     public UserResponse getMyInfo() {
