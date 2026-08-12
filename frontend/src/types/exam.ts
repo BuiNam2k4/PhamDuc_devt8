@@ -12,10 +12,16 @@ export enum ExamStatus {
   VIOLATED = 'VIOLATED',
 }
 
+export enum ExamMode {
+  ONLINE = 'ONLINE',
+  OFFLINE = 'OFFLINE',
+}
+
 export interface ExamSession {
   id: string;
   startTime?: string;
   duration?: number;
+  mode?: ExamMode;
   room?: Room;
   subject?: Subject;
   examSessionDetails?: ExamSessionDetail[];
@@ -35,4 +41,21 @@ export interface ExamSessionCamera {
   videoPath?: string;
   camera?: Camera;
   examSession?: ExamSession;
+}
+
+export interface ExamSessionCreationRequest {
+  startTime: string;
+  duration: number;
+  mode: ExamMode;
+  roomId: string;
+  subjectId: string;
+  studentIds?: string[];
+}
+
+export interface ExamSessionUpdateRequest {
+  startTime?: string;
+  duration?: number;
+  mode?: ExamMode;
+  roomId?: string;
+  subjectId?: string;
 }

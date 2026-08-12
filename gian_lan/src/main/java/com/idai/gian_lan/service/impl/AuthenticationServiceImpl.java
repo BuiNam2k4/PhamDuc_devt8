@@ -54,45 +54,23 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
 
-        String assignedRole = (request.getRole() != null && !request.getRole().isBlank())
-                ? request.getRole().toUpperCase()
-                : Role.USER.name();
+        Student student = Student.builder()
+                .username(request.getUsername())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(Role.USER.name())
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .studentCode(request.getStudentCode() != null && !request.getStudentCode().isBlank() 
+                        ? request.getStudentCode() 
+                        : "SV" + System.currentTimeMillis() % 100000)
+                .className(request.getClassName())
+                .build();
 
-        if (Role.ADMIN.name().equals(assignedRole)) {
-            User user = User.builder()
-                    .username(request.getUsername())
-                    .password(passwordEncoder.encode(request.getPassword()))
-                    .role(assignedRole)
-                    .fullName(request.getFullName())
-                    .email(request.getEmail())
-                    .build();
-
-            User savedUser = userRepository.save(user);
-            return userMapper.toUserResponse(savedUser);
-        } else {
-            // USER role represents Student
-            User user = User.builder()
-                    .username(request.getUsername())
-                    .password(passwordEncoder.encode(request.getPassword()))
-                    .role(Role.USER.name())
-                    .fullName(request.getFullName())
-                    .email(request.getEmail())
-                    .build();
-
-            Student student = Student.builder()
-                    .studentCode(request.getStudentCode() != null && !request.getStudentCode().isBlank() 
-                            ? request.getStudentCode() 
-                            : "SV" + System.currentTimeMillis() % 100000)
-                    .className(request.getClassName())
-                    .user(user)
-                    .build();
-
-            Student savedStudent = studentRepository.save(student);
-            UserResponse response = userMapper.toUserResponse(savedStudent.getUser());
-            response.setStudentCode(savedStudent.getStudentCode());
-            response.setClassName(savedStudent.getClassName());
-            return response;
-        }
+        Student savedStudent = studentRepository.save(student);
+        UserResponse response = userMapper.toUserResponse(savedStudent);
+        response.setStudentCode(savedStudent.getStudentCode());
+        response.setClassName(savedStudent.getClassName());
+        return response;
     }
 
     @Override

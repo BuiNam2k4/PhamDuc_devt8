@@ -161,7 +161,11 @@ export default function ModelManagementPage() {
       if (editingModel) {
         setModels(prev => prev.map(m => m.id === editingModel.id ? { ...m, ...formData } as ModelStatistic : m));
       } else {
-        const newM: ModelStatistic = { ...formData, id: String(Date.now()) };
+        const newM: ModelStatistic = { 
+          ...formData, 
+          id: String(Date.now()),
+          status: formData.status || 'INACTIVE'
+        };
         setModels(prev => [...prev, newM]);
       }
       showToast(editingModel ? 'Cập nhật thành công!' : 'Tạo mô hình mới thành công!', 'success');
