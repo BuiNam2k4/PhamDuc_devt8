@@ -2,6 +2,7 @@ import json
 import base64
 import cv2
 import numpy as np
+import os
 from datetime import datetime
 import asyncio
 from contextlib import asynccontextmanager
@@ -10,13 +11,17 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from monitoring.face_detector import FaceDetector
+from monitoring.face_detector import FaceDetectorWrapper
 from monitoring.head_pose_estimator import HeadPoseEstimator
 from monitoring.object_detector import ObjectDetector
 from monitoring.violation_detector import ViolationDetector
 
+# Setup directory for saving evidence pictures
+EVIDENCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "evidence")
+os.makedirs(EVIDENCE_DIR, exist_ok=True)
+
 # Global components
-face_detector = FaceDetector()
+face_detector = FaceDetectorWrapper()
 head_pose_estimator = HeadPoseEstimator()
 object_detector = ObjectDetector()
 violation_detector = ViolationDetector()
@@ -147,6 +152,56 @@ async def process_frame(frame_data: str, timestamp: int):
             response["type"] = "violation"
             response["violation_type"] = violations[0]["type"]
             response["details"] = violations[0]["details"]
+            
+            # Save annotated evidence image
+            try:
+                dt_obj = datetime.fromtimestamp(timestamp / 1000)
+                time_str = dt_obj.strftime("%Y%m%d_%H%M%S")
+                violation_type = violations[0]["type"]
+                filename = f"evidence_{time_str}_{violation_type}.jpg"
+                filepath = os.path.join(EVIDENCE_DIR, filename)
+                
+                # Draw boxes/info on frame copy
+                annotated_frame = frame.copy()
+                fh, fw = frame.shape[:2]
+                
+                # Draw faces
+                for face in faces:
+                    x, y, w, h = face['bbox']
+                    x = max(0, min(x, fw - 1))
+                    y = max(0, min(y, fh - 1))
+                    w = max(1, min(w, fw - x))
+                    h = max(1, min(h, fh - y))
+                    cv2.rectangle(annotated_frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                    cv2.putText(annotated_frame, f"Face: {face['confidence']:.2f}", (x, y - 5), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                
+                # Draw objects
+                for obj in objects:
+                    ox, oy, ow, oh = obj['bbox']
+                    ox = max(0, min(ox, fw - 1))
+                    oy = max(0, min(oy, fh - 1))
+                    ow = max(1, min(ow, fw - ox))
+                    oh = max(1, min(oh, fh - oy))
+                    color = (0, 0, 255) if obj['class_name'] in ['cell phone', 'book'] else (0, 255, 0)
+                    cv2.rectangle(annotated_frame, (ox, oy), (ox + ow, oy + oh), color, 2)
+                    cv2.putText(annotated_frame, f"{obj['class_name']}: {obj['confidence']:.2f}", (ox, oy - 5), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+                
+                # Draw Head Pose Info
+                pose_text = f"Yaw: {head_yaw:.1f} Pitch: {head_pitch:.1f} Roll: {head_roll:.1f}"
+                cv2.putText(annotated_frame, pose_text, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+                
+                # Draw violation label on top right
+                violation_label = f"VIOLATION: {violation_type.upper()}"
+                cv2.putText(annotated_frame, violation_label, (annotated_frame.shape[1] - 300, 25), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                
+                # Write file
+                cv2.imwrite(filepath, annotated_frame)
+                print(f"📸 Saved evidence image: {filepath}")
+            except Exception as save_err:
+                print(f"Error saving evidence image: {save_err}")
         
         return response
         

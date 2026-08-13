@@ -1,19 +1,30 @@
 import cv2
 import numpy as np
+import os
 import mediapipe as mp
+from mediapipe.tasks.python import BaseOptions
+from mediapipe.tasks.python.vision import (
+    FaceLandmarker,
+    FaceLandmarkerOptions,
+    RunningMode,
+)
+
+# Đường dẫn tới model file
+MODEL_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    '..', 'models', 'face_landmarker.task'
+)
 
 class HeadPoseEstimator:
     def __init__(self):
-        self.mp_face_mesh = mp.solutions.face_mesh
-        self.mp_drawing = mp.solutions.drawing_utils
-        
-        self.face_mesh = self.mp_face_mesh.FaceMesh(
-            static_image_mode=False,
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+        options = FaceLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path=MODEL_PATH),
+            running_mode=RunningMode.IMAGE,
+            num_faces=1,
+            min_face_detection_confidence=0.5,
+            min_tracking_confidence=0.5,
         )
+        self.landmarker = FaceLandmarker.create_from_options(options)
         
         # 3D model points của khuôn mặt (trong world coordinates)
         self.model_points = np.array([
@@ -43,17 +54,19 @@ class HeadPoseEstimator:
             tuple: (yaw, pitch, roll) trong degrees
         """
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.face_mesh.process(rgb_frame)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
         
-        if not results.multi_face_landmarks:
+        result = self.landmarker.detect(mp_image)
+        
+        if not result.face_landmarks:
             return 0.0, 0.0, 0.0
         
-        face_landmarks = results.multi_face_landmarks[0]
+        face_landmarks = result.face_landmarks[0]
         h, w = frame.shape[:2]
         image_points = []
         
         for idx in self.landmark_indices:
-            landmark = face_landmarks.landmark[idx]
+            landmark = face_landmarks[idx]
             x = int(landmark.x * w)
             y = int(landmark.y * h)
             image_points.append([x, y])

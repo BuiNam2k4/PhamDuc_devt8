@@ -29,8 +29,8 @@ class ViolationDetector:
         """
         Kiểm tra các vi phạm từ dữ liệu monitoring
         """
-        violations = []
         current_time = timestamp / 1000  # Convert to seconds
+        violations = []
         
         # 1. Kiểm tra nhiều khuôn mặt
         violation = self._check_multiple_faces(face_count, current_time)

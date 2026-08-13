@@ -1,17 +1,28 @@
 import cv2
-import mediapipe as mp
 import numpy as np
+import os
+import mediapipe as mp
+from mediapipe.tasks.python import BaseOptions
+from mediapipe.tasks.python.vision import (
+    FaceDetector,
+    FaceDetectorOptions,
+    RunningMode,
+)
 
-class FaceDetector:
+# Đường dẫn tới model file
+MODEL_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    '..', 'models', 'blaze_face_short_range.tflite'
+)
+
+class FaceDetectorWrapper:
     def __init__(self):
-        self.mp_face_detection = mp.solutions.face_detection
-        self.mp_drawing = mp.solutions.drawing_utils
-        
-        # Khởi tạo face detection với confidence threshold
-        self.face_detection = self.mp_face_detection.FaceDetection(
-            model_selection=0,  # 0 cho camera gần (< 2m), 1 cho camera xa
-            min_detection_confidence=0.6
+        options = FaceDetectorOptions(
+            base_options=BaseOptions(model_asset_path=MODEL_PATH),
+            running_mode=RunningMode.IMAGE,
+            min_detection_confidence=0.6,
         )
+        self.detector = FaceDetector.create_from_options(options)
     
     def detect_faces(self, frame):
         """
@@ -24,23 +35,31 @@ class FaceDetector:
             list: Danh sách các khuôn mặt được phát hiện
         """
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.face_detection.process(rgb_frame)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+        
+        result = self.detector.detect(mp_image)
         
         faces = []
-        if results.detections:
-            for detection in results.detections:
-                bbox = detection.location_data.relative_bounding_box
-                h, w, _ = frame.shape
+        h, w, _ = frame.shape
+        
+        if result.detections:
+            for detection in result.detections:
+                bbox = detection.bounding_box
                 
-                x = int(bbox.xmin * w)
-                y = int(bbox.ymin * h)
-                width = int(bbox.width * w)
-                height = int(bbox.height * h)
+                x = bbox.origin_x
+                y = bbox.origin_y
+                width = bbox.width
+                height = bbox.height
+                
+                # Extract keypoints
+                keypoints = self._extract_keypoints(detection, w, h)
+                
+                confidence = detection.categories[0].score if detection.categories else 0.0
                 
                 face_info = {
                     'bbox': (x, y, width, height),
-                    'confidence': float(detection.score[0]),
-                    'keypoints': self._extract_keypoints(detection, w, h)
+                    'confidence': float(confidence),
+                    'keypoints': keypoints
                 }
                 faces.append(face_info)
         
@@ -50,15 +69,15 @@ class FaceDetector:
         """Trích xuất các điểm đặc trưng từ detection"""
         keypoints = {}
         
-        if hasattr(detection.location_data, 'relative_keypoints'):
-            for idx, keypoint in enumerate(detection.location_data.relative_keypoints):
+        keypoint_names = [
+            'right_eye', 'left_eye', 'nose_tip', 
+            'mouth_center', 'right_ear_tragion', 'left_ear_tragion'
+        ]
+        
+        if detection.keypoints:
+            for idx, keypoint in enumerate(detection.keypoints):
                 x = int(keypoint.x * img_width)
                 y = int(keypoint.y * img_height)
-                
-                keypoint_names = [
-                    'right_eye', 'left_eye', 'nose_tip', 
-                    'mouth_center', 'right_ear_tragion', 'left_ear_tragion'
-                ]
                 
                 if idx < len(keypoint_names):
                     keypoints[keypoint_names[idx]] = (x, y)
