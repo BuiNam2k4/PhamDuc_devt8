@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { RecognitionResult } from '../types';
 
-export function useWebSocket(url: string = 'ws://localhost:8000/ws/monitor') {
+export function useWebSocket(url: string = 'ws://localhost:8000/ws') {
   const [isConnected, setIsConnected] = useState(false);
   const [violations, setViolations] = useState<RecognitionResult[]>([]);
   const wsRef = useRef<WebSocket | null>(null);

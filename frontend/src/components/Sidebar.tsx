@@ -14,6 +14,7 @@ import {
   Calendar,
   LogOut,
   User as UserIcon,
+  Camera,
   LucideIcon
 } from 'lucide-react';
 import { authService } from '../services';
@@ -29,6 +30,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { path: '/admin', label: 'Tổng quan Hệ thống', icon: LayoutDashboard, badge: null },
   { path: '/admin/realtime', label: 'Giám sát Camera Live', icon: Video, badge: 'LIVE' },
+  { path: '/admin/cam-test', label: 'Kiểm Tra Kết Nối AI', icon: Camera, badge: 'TEST' },
   // { path: '/admin/offline', label: 'Phân tích Video Off', icon: FileVideo, badge: null },
   { path: '/admin/logs', label: 'Nhật ký Vi phạm', icon: AlertTriangle, badge: 'LOGS' },
   { path: '/admin/models', label: 'Quản lý Mô hình AI', icon: Cpu, badge: 'HOT' },

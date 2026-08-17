@@ -1,0 +1,1939 @@
+{
+  "version": "31.3.1",
+  "pages": [
+    {
+      "id": "axfqG7nYS-X6vH1CAcXC",
+      "name": "lớp thực thể",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-1",
+          "type": "node",
+          "parent": "1",
+          "metadata": {
+            "plantUmlData": "{\n  \"data\": \"@startuml\\nskinparam class {\\n    BackgroundColor LightSkyBlue\\n    BorderColor RoyalBlue\\n    ArrowColor RoyalBlue\\n}\\n\\nclass User {\\n    +id: String\\n    +username: String\\n    +password: String\\n    +role: String\\n    +fullName: String\\n    +email: String\\n}\\n\\nclass Student {\\n    +studentCode: String\\n    +className: String\\n    +avatarUrl: String\\n    +faceEmbedding: String\\n}\\n\\nclass Room {\\n    +id: String\\n    +roomCode: String\\n    +name: String\\n    +capacity: int\\n}\\n\\nclass Subject {\\n    +id: String\\n    +subjectCode: String\\n    +name: String\\n    +credit: int\\n}\\n\\nclass Camera {\\n    +id: String\\n    +cameraCode: String\\n    +name: String\\n    +ipAddress: String\\n    +location: String\\n    +status: CameraStatus\\n}\\n\\nclass ExamSession {\\n    +id: String\\n    +startTime: Date\\n    +duration: float\\n    +mode: ExamMode\\n}\\n\\nclass ExamSessionCamera {\\n    +id: String\\n    +videoPath: String\\n}\\n\\nclass ExamSessionDetail {\\n    +id: String\\n    +status: ExamStatus\\n    +seatNumber: String\\n    +note: String\\n}\\n\\nclass Model {\\n    +id: String\\n    +name: String\\n    +precision: String\\n    +recall: String\\n    +f1Score: String\\n    +status: String\\n    +modelPath: String\\n}\\n\\nclass ModelSample {\\n    +id: String\\n    +type: String\\n}\\n\\nclass Sample {\\n    +id: String\\n    +name: String\\n    +dataPath: String\\n}\\n\\nclass ModelStatistic {\\n    +totalSamples: int\\n    +cheatingDetections: int\\n}\\n\\nclass RecognitionResult {\\n    +id: String\\n    +violationType: ViolationType\\n    +confidence: Double\\n    +detectionTime: String\\n    +detail: String\\n    +imageUrl: String\\n}\\n\\n' Relationships\\nUser <|-- Student : extends\\nModel <|-- ModelStatistic : extends\\n\\nExamSession \\\"1\\\" o-- \\\"0..*\\\" ExamSessionDetail : aggregates\\nExamSession \\\"1\\\" o-- \\\"0..*\\\" ExamSessionCamera : aggregates\\nExamSession \\\"1\\\" o-- \\\"1\\\" Room : has\\nExamSession \\\"1\\\" o-- \\\"1\\\" Subject : has\\nExamSession \\\"1\\\" o-- \\\"1\\\" Model : uses\\n\\nExamSessionCamera \\\"1\\\" o-- \\\"1\\\" Camera : aggregates\\nExamSessionDetail \\\"1\\\" o-- \\\"1\\\" Student : aggregates\\n\\nModel \\\"1\\\" *-- \\\"0..*\\\" ModelSample : composition\\nModelSample \\\"1\\\" o-- \\\"1\\\" Sample : aggregates\\n\\nRecognitionResult \\\"1\\\" o-- \\\"1\\\" Model : uses\\nRecognitionResult \\\"1\\\" o-- \\\"1\\\" ExamSessionCamera : uses\\n\\n@endum\",\n  \"config\": null\n}"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-2",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "User",
+          "metadata": {
+            "plantUmlId": "cls_2",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "User"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-3",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-2",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_3",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-4",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-2",
+          "label": "id: String",
+          "metadata": {
+            "plantUmlId": "mb_4",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "id: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-5",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-4",
+          "metadata": {
+            "plantUmlId": "vis_5",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-6",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-2",
+          "label": "username: String",
+          "metadata": {
+            "plantUmlId": "mb_6",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "username: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-7",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-6",
+          "metadata": {
+            "plantUmlId": "vis_7",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-8",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-2",
+          "label": "password: String",
+          "metadata": {
+            "plantUmlId": "mb_8",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "password: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-9",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-8",
+          "metadata": {
+            "plantUmlId": "vis_9",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-10",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-2",
+          "label": "role: String",
+          "metadata": {
+            "plantUmlId": "mb_10",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "role: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-11",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-10",
+          "metadata": {
+            "plantUmlId": "vis_11",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-12",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-2",
+          "label": "fullName: String",
+          "metadata": {
+            "plantUmlId": "mb_12",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "fullName: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-13",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-12",
+          "metadata": {
+            "plantUmlId": "vis_13",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-14",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-2",
+          "label": "email: String",
+          "metadata": {
+            "plantUmlId": "mb_14",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "email: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-15",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-14",
+          "metadata": {
+            "plantUmlId": "vis_15",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-16",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-2",
+          "metadata": {
+            "plantUmlId": "clssep_16",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-17",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "Student",
+          "metadata": {
+            "plantUmlId": "cls_17",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "Student"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-18",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-17",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_18",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-19",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-17",
+          "label": "studentCode: String",
+          "metadata": {
+            "plantUmlId": "mb_19",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "studentCode: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-20",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-19",
+          "metadata": {
+            "plantUmlId": "vis_20",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-21",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-17",
+          "label": "className: String",
+          "metadata": {
+            "plantUmlId": "mb_21",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "className: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-22",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-21",
+          "metadata": {
+            "plantUmlId": "vis_22",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-23",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-17",
+          "label": "avatarUrl: String",
+          "metadata": {
+            "plantUmlId": "mb_23",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "avatarUrl: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-24",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-23",
+          "metadata": {
+            "plantUmlId": "vis_24",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-25",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-17",
+          "label": "faceEmbedding: String",
+          "metadata": {
+            "plantUmlId": "mb_25",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "faceEmbedding: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-26",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-25",
+          "metadata": {
+            "plantUmlId": "vis_26",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-27",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-17",
+          "metadata": {
+            "plantUmlId": "clssep_27",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-28",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "Room",
+          "metadata": {
+            "plantUmlId": "cls_28",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "Room"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-29",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-28",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_29",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-30",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-28",
+          "label": "id: String",
+          "metadata": {
+            "plantUmlId": "mb_30",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "id: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-31",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-30",
+          "metadata": {
+            "plantUmlId": "vis_31",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-32",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-28",
+          "label": "roomCode: String",
+          "metadata": {
+            "plantUmlId": "mb_32",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "roomCode: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-33",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-32",
+          "metadata": {
+            "plantUmlId": "vis_33",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-34",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-28",
+          "label": "name: String",
+          "metadata": {
+            "plantUmlId": "mb_34",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "name: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-35",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-34",
+          "metadata": {
+            "plantUmlId": "vis_35",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-36",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-28",
+          "label": "capacity: int",
+          "metadata": {
+            "plantUmlId": "mb_36",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "capacity: int"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-37",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-36",
+          "metadata": {
+            "plantUmlId": "vis_37",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-38",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-28",
+          "metadata": {
+            "plantUmlId": "clssep_38",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-39",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "Subject",
+          "metadata": {
+            "plantUmlId": "cls_39",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "Subject"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-40",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-39",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_40",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-41",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-39",
+          "label": "id: String",
+          "metadata": {
+            "plantUmlId": "mb_41",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "id: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-42",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-41",
+          "metadata": {
+            "plantUmlId": "vis_42",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-43",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-39",
+          "label": "subjectCode: String",
+          "metadata": {
+            "plantUmlId": "mb_43",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "subjectCode: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-44",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-43",
+          "metadata": {
+            "plantUmlId": "vis_44",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-45",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-39",
+          "label": "name: String",
+          "metadata": {
+            "plantUmlId": "mb_45",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "name: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-46",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-45",
+          "metadata": {
+            "plantUmlId": "vis_46",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-47",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-39",
+          "label": "credit: int",
+          "metadata": {
+            "plantUmlId": "mb_47",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "credit: int"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-48",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-47",
+          "metadata": {
+            "plantUmlId": "vis_48",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-49",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-39",
+          "metadata": {
+            "plantUmlId": "clssep_49",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-50",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "Camera",
+          "metadata": {
+            "plantUmlId": "cls_50",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "Camera"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-51",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-50",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_51",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-52",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-50",
+          "label": "id: String",
+          "metadata": {
+            "plantUmlId": "mb_52",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "id: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-53",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-52",
+          "metadata": {
+            "plantUmlId": "vis_53",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-54",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-50",
+          "label": "cameraCode: String",
+          "metadata": {
+            "plantUmlId": "mb_54",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "cameraCode: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-55",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-54",
+          "metadata": {
+            "plantUmlId": "vis_55",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-56",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-50",
+          "label": "name: String",
+          "metadata": {
+            "plantUmlId": "mb_56",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "name: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-57",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-56",
+          "metadata": {
+            "plantUmlId": "vis_57",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-58",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-50",
+          "label": "ipAddress: String",
+          "metadata": {
+            "plantUmlId": "mb_58",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "ipAddress: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-59",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-58",
+          "metadata": {
+            "plantUmlId": "vis_59",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-60",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-50",
+          "label": "location: String",
+          "metadata": {
+            "plantUmlId": "mb_60",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "location: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-61",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-60",
+          "metadata": {
+            "plantUmlId": "vis_61",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-62",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-50",
+          "label": "status: CameraStatus",
+          "metadata": {
+            "plantUmlId": "mb_62",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "status: CameraStatus"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-63",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-62",
+          "metadata": {
+            "plantUmlId": "vis_63",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-64",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-50",
+          "metadata": {
+            "plantUmlId": "clssep_64",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-76",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "ExamSessionCamera",
+          "metadata": {
+            "plantUmlId": "cls_76",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "ExamSessionCamera"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-77",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-76",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_77",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-78",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-76",
+          "label": "id: String",
+          "metadata": {
+            "plantUmlId": "mb_78",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "id: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-79",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-78",
+          "metadata": {
+            "plantUmlId": "vis_79",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-80",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-76",
+          "label": "videoPath: String",
+          "metadata": {
+            "plantUmlId": "mb_80",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "videoPath: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-81",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-80",
+          "metadata": {
+            "plantUmlId": "vis_81",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-82",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-76",
+          "metadata": {
+            "plantUmlId": "clssep_82",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-83",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "ExamSessionDetail",
+          "metadata": {
+            "plantUmlId": "cls_83",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "ExamSessionDetail"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-84",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-83",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_84",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-85",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-83",
+          "label": "id: String",
+          "metadata": {
+            "plantUmlId": "mb_85",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "id: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-86",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-85",
+          "metadata": {
+            "plantUmlId": "vis_86",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-87",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-83",
+          "label": "status: ExamStatus",
+          "metadata": {
+            "plantUmlId": "mb_87",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "status: ExamStatus"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-88",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-87",
+          "metadata": {
+            "plantUmlId": "vis_88",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-89",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-83",
+          "label": "seatNumber: String",
+          "metadata": {
+            "plantUmlId": "mb_89",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "seatNumber: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-90",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-89",
+          "metadata": {
+            "plantUmlId": "vis_90",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-91",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-83",
+          "label": "note: String",
+          "metadata": {
+            "plantUmlId": "mb_91",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "note: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-92",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-91",
+          "metadata": {
+            "plantUmlId": "vis_92",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-93",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-83",
+          "metadata": {
+            "plantUmlId": "clssep_93",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-94",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "Model",
+          "metadata": {
+            "plantUmlId": "cls_94",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "Model"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-95",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-94",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_95",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-96",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-94",
+          "label": "id: String",
+          "metadata": {
+            "plantUmlId": "mb_96",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "id: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-97",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-96",
+          "metadata": {
+            "plantUmlId": "vis_97",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-98",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-94",
+          "label": "name: String",
+          "metadata": {
+            "plantUmlId": "mb_98",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "name: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-99",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-98",
+          "metadata": {
+            "plantUmlId": "vis_99",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-100",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-94",
+          "label": "precision: String",
+          "metadata": {
+            "plantUmlId": "mb_100",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "precision: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-101",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-100",
+          "metadata": {
+            "plantUmlId": "vis_101",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-102",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-94",
+          "label": "recall: String",
+          "metadata": {
+            "plantUmlId": "mb_102",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "recall: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-103",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-102",
+          "metadata": {
+            "plantUmlId": "vis_103",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-104",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-94",
+          "label": "f1Score: String",
+          "metadata": {
+            "plantUmlId": "mb_104",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "f1Score: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-105",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-104",
+          "metadata": {
+            "plantUmlId": "vis_105",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-106",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-94",
+          "label": "status: String",
+          "metadata": {
+            "plantUmlId": "mb_106",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "status: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-107",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-106",
+          "metadata": {
+            "plantUmlId": "vis_107",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-108",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-94",
+          "label": "modelPath: String",
+          "metadata": {
+            "plantUmlId": "mb_108",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "modelPath: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-109",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-108",
+          "metadata": {
+            "plantUmlId": "vis_109",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-110",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-94",
+          "metadata": {
+            "plantUmlId": "clssep_110",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-111",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "ModelSample",
+          "metadata": {
+            "plantUmlId": "cls_111",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "ModelSample"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-112",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-111",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_112",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-113",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-111",
+          "label": "id: String",
+          "metadata": {
+            "plantUmlId": "mb_113",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "id: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-114",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-113",
+          "metadata": {
+            "plantUmlId": "vis_114",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-115",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-111",
+          "label": "type: String",
+          "metadata": {
+            "plantUmlId": "mb_115",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "type: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-116",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-115",
+          "metadata": {
+            "plantUmlId": "vis_116",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-117",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-111",
+          "metadata": {
+            "plantUmlId": "clssep_117",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-118",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "Sample",
+          "metadata": {
+            "plantUmlId": "cls_118",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "Sample"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-119",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-118",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_119",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-120",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-118",
+          "label": "id: String",
+          "metadata": {
+            "plantUmlId": "mb_120",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "id: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-121",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-120",
+          "metadata": {
+            "plantUmlId": "vis_121",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-122",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-118",
+          "label": "name: String",
+          "metadata": {
+            "plantUmlId": "mb_122",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "name: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-123",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-122",
+          "metadata": {
+            "plantUmlId": "vis_123",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-124",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-118",
+          "label": "dataPath: String",
+          "metadata": {
+            "plantUmlId": "mb_124",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "dataPath: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-125",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-124",
+          "metadata": {
+            "plantUmlId": "vis_125",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-126",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-118",
+          "metadata": {
+            "plantUmlId": "clssep_126",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-127",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "ModelStatistic",
+          "metadata": {
+            "plantUmlId": "cls_127",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "ModelStatistic"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-128",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-127",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_128",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-129",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-127",
+          "label": "totalSamples: int",
+          "metadata": {
+            "plantUmlId": "mb_129",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "totalSamples: int"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-130",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-129",
+          "metadata": {
+            "plantUmlId": "vis_130",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-131",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-127",
+          "label": "cheatingDetections: int",
+          "metadata": {
+            "plantUmlId": "mb_131",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "cheatingDetections: int"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-132",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-131",
+          "metadata": {
+            "plantUmlId": "vis_132",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-133",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-127",
+          "metadata": {
+            "plantUmlId": "clssep_133",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-134",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "RecognitionResult",
+          "metadata": {
+            "plantUmlId": "cls_134",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "RecognitionResult"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-135",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-134",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_135",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-136",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-134",
+          "label": "id: String",
+          "metadata": {
+            "plantUmlId": "mb_136",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "id: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-137",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-136",
+          "metadata": {
+            "plantUmlId": "vis_137",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-138",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-134",
+          "label": "violationType: ViolationType",
+          "metadata": {
+            "plantUmlId": "mb_138",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "violationType: ViolationType"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-139",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-138",
+          "metadata": {
+            "plantUmlId": "vis_139",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-140",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-134",
+          "label": "confidence: Double",
+          "metadata": {
+            "plantUmlId": "mb_140",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "confidence: Double"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-141",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-140",
+          "metadata": {
+            "plantUmlId": "vis_141",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-142",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-134",
+          "label": "detectionTime: String",
+          "metadata": {
+            "plantUmlId": "mb_142",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "detectionTime: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-143",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-142",
+          "metadata": {
+            "plantUmlId": "vis_143",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-144",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-134",
+          "label": "detail: String",
+          "metadata": {
+            "plantUmlId": "mb_144",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "detail: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-145",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-144",
+          "metadata": {
+            "plantUmlId": "vis_145",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-146",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-134",
+          "label": "imageUrl: String",
+          "metadata": {
+            "plantUmlId": "mb_146",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "imageUrl: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-147",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-146",
+          "metadata": {
+            "plantUmlId": "vis_147",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-148",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-134",
+          "metadata": {
+            "plantUmlId": "clssep_148",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-149",
+          "type": "edge",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "source": "9o8sdOsT5DqJEF8vm8P1-19",
+          "target": "9o8sdOsT5DqJEF8vm8P1-8",
+          "label": "extends",
+          "metadata": {
+            "plantUmlId": "rel_149",
+            "plantUmlBaseStyle": "endArrow=block;endFill=0;endSize=12;html=1;strokeColor=#181818;fontColor=#000000;fontSize=11;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;",
+            "plantUmlBaseValue": "extends"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-150",
+          "type": "edge",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "source": "9o8sdOsT5DqJEF8vm8P1-127",
+          "target": "9o8sdOsT5DqJEF8vm8P1-96",
+          "label": "extends",
+          "metadata": {
+            "plantUmlId": "rel_150",
+            "plantUmlBaseStyle": "endArrow=block;endFill=0;endSize=12;html=1;strokeColor=#181818;fontColor=#000000;fontSize=11;exitX=0.25;exitY=0;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;",
+            "plantUmlBaseValue": "extends"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-151",
+          "type": "edge",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "source": "9o8sdOsT5DqJEF8vm8P1-69",
+          "target": "9o8sdOsT5DqJEF8vm8P1-85",
+          "label": "aggregates",
+          "metadata": {
+            "plantUmlId": "rel_151",
+            "plantUmlBaseStyle": "startArrow=diamond;startFill=0;startSize=12;endArrow=none;html=1;strokeColor=#181818;fontColor=#000000;fontSize=11;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;",
+            "plantUmlBaseValue": "aggregates"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-152",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_152",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-153",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "0..*",
+          "metadata": {
+            "plantUmlId": "card_153",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "0..*"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-154",
+          "type": "edge",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "source": "9o8sdOsT5DqJEF8vm8P1-65",
+          "target": "9o8sdOsT5DqJEF8vm8P1-76",
+          "label": "aggregates",
+          "metadata": {
+            "plantUmlId": "rel_154",
+            "plantUmlBaseStyle": "startArrow=diamond;startFill=0;startSize=12;endArrow=none;html=1;strokeColor=#181818;fontColor=#000000;fontSize=11;exitX=0.59;exitY=1;exitDx=0;exitDy=0;entryX=0.42;entryY=0;entryDx=0;entryDy=0;",
+            "plantUmlBaseValue": "aggregates"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-155",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_155",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-156",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "0..*",
+          "metadata": {
+            "plantUmlId": "card_156",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "0..*"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-157",
+          "type": "edge",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "source": "9o8sdOsT5DqJEF8vm8P1-65",
+          "target": "9o8sdOsT5DqJEF8vm8P1-28",
+          "label": "has",
+          "metadata": {
+            "plantUmlId": "rel_157",
+            "plantUmlBaseStyle": "startArrow=diamond;startFill=0;startSize=12;endArrow=none;html=1;strokeColor=#181818;fontColor=#000000;fontSize=11;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;",
+            "plantUmlBaseValue": "has"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-158",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_158",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-159",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_159",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-160",
+          "type": "edge",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "source": "9o8sdOsT5DqJEF8vm8P1-65",
+          "target": "9o8sdOsT5DqJEF8vm8P1-39",
+          "label": "has",
+          "metadata": {
+            "plantUmlId": "rel_160",
+            "plantUmlBaseStyle": "startArrow=diamond;startFill=0;startSize=12;endArrow=none;html=1;strokeColor=#181818;fontColor=#000000;fontSize=11;exitX=0.56;exitY=1;exitDx=0;exitDy=0;entryX=0.44;entryY=0;entryDx=0;entryDy=0;",
+            "plantUmlBaseValue": "has"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-161",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_161",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-162",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_162",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-164",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_164",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-165",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_165",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-166",
+          "type": "edge",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "source": "9o8sdOsT5DqJEF8vm8P1-76",
+          "target": "9o8sdOsT5DqJEF8vm8P1-52",
+          "label": "aggregates",
+          "metadata": {
+            "plantUmlId": "rel_166",
+            "plantUmlBaseStyle": "startArrow=diamond;startFill=0;startSize=12;endArrow=none;html=1;strokeColor=#181818;fontColor=#000000;fontSize=11;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;",
+            "plantUmlBaseValue": "aggregates"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-167",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_167",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-168",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_168",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-169",
+          "type": "edge",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "source": "9o8sdOsT5DqJEF8vm8P1-83",
+          "target": "9o8sdOsT5DqJEF8vm8P1-17",
+          "label": "1 aggregates 1",
+          "metadata": {
+            "plantUmlId": "rel_169",
+            "plantUmlBaseStyle": "startArrow=diamond;startFill=0;startSize=12;endArrow=none;html=1;strokeColor=#181818;fontColor=#000000;fontSize=11;",
+            "plantUmlBaseValue": "1 aggregates 1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-170",
+          "type": "edge",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "source": "9o8sdOsT5DqJEF8vm8P1-94",
+          "target": "9o8sdOsT5DqJEF8vm8P1-111",
+          "label": "1 composition 0..*",
+          "metadata": {
+            "plantUmlId": "rel_170",
+            "plantUmlBaseStyle": "startArrow=diamond;startFill=1;startSize=12;endArrow=none;html=1;strokeColor=#181818;fontColor=#000000;fontSize=11;",
+            "plantUmlBaseValue": "1 composition 0..*"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-171",
+          "type": "edge",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "source": "9o8sdOsT5DqJEF8vm8P1-111",
+          "target": "9o8sdOsT5DqJEF8vm8P1-118",
+          "label": "aggregates",
+          "metadata": {
+            "plantUmlId": "rel_171",
+            "plantUmlBaseStyle": "startArrow=diamond;startFill=0;startSize=12;endArrow=none;html=1;strokeColor=#181818;fontColor=#000000;fontSize=11;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;",
+            "plantUmlBaseValue": "aggregates"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-172",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_172",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-173",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_173",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-175",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_175",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-176",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_176",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-177",
+          "type": "edge",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "source": "9o8sdOsT5DqJEF8vm8P1-138",
+          "target": "9o8sdOsT5DqJEF8vm8P1-78",
+          "label": "uses",
+          "metadata": {
+            "plantUmlId": "rel_177",
+            "plantUmlBaseStyle": "startArrow=diamond;startFill=0;startSize=12;endArrow=none;html=1;strokeColor=#181818;fontColor=#000000;fontSize=11;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;",
+            "plantUmlBaseValue": "uses"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-178",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_178",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-179",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "1",
+          "metadata": {
+            "plantUmlId": "card_179",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#000000;",
+            "plantUmlBaseValue": "1"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-65",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "label": "ExamSession",
+          "metadata": {
+            "plantUmlId": "cls_65",
+            "plantUmlBaseStyle": "swimlane;collapsible=0;fontStyle=0;align=center;fontSize=14;fontColor=#000000;startSize=32;spacingLeft=25;fillColor=#F1F1F1;strokeColor=#181818;childLayout=stackLayout;horizontal=1;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;marginBottom=0;stackSpacing=0;marginTop=5.5;",
+            "plantUmlBaseValue": "ExamSession"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-66",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-65",
+          "label": "C",
+          "metadata": {
+            "plantUmlId": "ico_66",
+            "plantUmlBaseStyle": "ellipse;fillColor=#ADD1B2;strokeColor=#181818;fontSize=13;fontStyle=1;fontColor=#000000;movable=0;connectable=0;",
+            "plantUmlBaseValue": "C"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-67",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-65",
+          "label": "id: String",
+          "metadata": {
+            "plantUmlId": "mb_67",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "id: String"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-68",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-67",
+          "metadata": {
+            "plantUmlId": "vis_68",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-69",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-65",
+          "label": "startTime: Date",
+          "metadata": {
+            "plantUmlId": "mb_69",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "startTime: Date"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-70",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-69",
+          "metadata": {
+            "plantUmlId": "vis_70",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-71",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-65",
+          "label": "duration: float",
+          "metadata": {
+            "plantUmlId": "mb_71",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "duration: float"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-72",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-71",
+          "metadata": {
+            "plantUmlId": "vis_72",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-73",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-65",
+          "label": "mode: ExamMode",
+          "metadata": {
+            "plantUmlId": "mb_73",
+            "plantUmlBaseStyle": "text;html=1;align=left;verticalAlign=middle;spacingLeft=20;spacingRight=4;overflow=hidden;rotatable=0;fillColor=none;strokeColor=none;fontSize=14;fontColor=#000000;fontStyle=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;",
+            "plantUmlBaseValue": "mode: ExamMode"
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-74",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-73",
+          "metadata": {
+            "plantUmlId": "vis_74",
+            "plantUmlBaseStyle": "ellipse;fillColor=none;strokeColor=#038048;strokeWidth=1;movable=0;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-75",
+          "type": "node",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-65",
+          "metadata": {
+            "plantUmlId": "clssep_75",
+            "plantUmlBaseStyle": "line;strokeWidth=0.5;strokeColor=#181818;fillColor=none;align=left;verticalAlign=middle;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;connectable=0;",
+            "plantUmlBaseValue": ""
+          }
+        },
+        {
+          "id": "9o8sdOsT5DqJEF8vm8P1-184",
+          "type": "edge",
+          "parent": "9o8sdOsT5DqJEF8vm8P1-1",
+          "source": "9o8sdOsT5DqJEF8vm8P1-100",
+          "target": "9o8sdOsT5DqJEF8vm8P1-142"
+        }
+      ]
+    },
+    {
+      "id": "db_schema_page_id",
+      "name": "cơ sở dữ liệu",
+      "cells": [
+        {
+          "id": "db_layer_1",
+          "type": "layer"
+        },
+        {
+          "id": "db_node_plantuml_1",
+          "type": "node",
+          "parent": "db_layer_1",
+          "metadata": {
+            "plantUmlData": "{\"data\": \"@startuml\\nskinparam class {\\n    BackgroundColor LightGoldenRodYellow\\n    BorderColor DarkGoldenRod\\n    ArrowColor DarkGoldenRod\\n}\\n\\nclass users {\\n    +id : VARCHAR(36) [PK]\\n    +username : VARCHAR(255) [UNIQUE]\\n    +password : VARCHAR(255)\\n    +role : VARCHAR(255)\\n    +full_name : VARCHAR(255)\\n    +email : VARCHAR(255)\\n}\\n\\nclass students {\\n    +id : VARCHAR(36) [PK, FK]\\n    +student_code : VARCHAR(255) [UNIQUE]\\n    +class_name : VARCHAR(255)\\n    +avatar_url : VARCHAR(255)\\n    +face_embedding : TEXT\\n}\\n\\nclass rooms {\\n    +id : VARCHAR(36) [PK]\\n    +room_code : VARCHAR(255) [UNIQUE]\\n    +name : VARCHAR(255)\\n    +capacity : INT\\n    +building : VARCHAR(255)\\n    +description : VARCHAR(255)\\n}\\n\\nclass subjects {\\n    +id : VARCHAR(36) [PK]\\n    +subject_code : VARCHAR(255) [UNIQUE]\\n    +name : VARCHAR(255)\\n    +credits : INT\\n    +department : VARCHAR(255)\\n}\\n\\nclass cameras {\\n    +id : VARCHAR(36) [PK]\\n    +camera_code : VARCHAR(255) [UNIQUE]\\n    +name : VARCHAR(255)\\n    +ip_address : VARCHAR(255)\\n    +location : VARCHAR(255)\\n    +status : VARCHAR(255)\\n}\\n\\nclass models {\\n    +id : VARCHAR(36) [PK]\\n    +name : VARCHAR(255)\\n    +precision : VARCHAR(255)\\n    +recall : VARCHAR(255)\\n    +f1_score : VARCHAR(255)\\n    +status : VARCHAR(255)\\n    +model_path : VARCHAR(255)\\n}\\n\\nclass samples {\\n    +id : VARCHAR(36) [PK]\\n    +name : VARCHAR(255)\\n    +data_path : VARCHAR(255)\\n}\\n\\nclass model_samples {\\n    +id : VARCHAR(36) [PK]\\n    +type : VARCHAR(255)\\n    +sample_id : VARCHAR(36) [FK]\\n    +model_id : VARCHAR(36) [FK]\\n}\\n\\nclass exam_sessions {\\n    +id : VARCHAR(36) [PK]\\n    +start_time : DATETIME\\n    +duration : FLOAT\\n    +mode : VARCHAR(255)\\n    +room_id : VARCHAR(36) [FK]\\n    +subject_id : VARCHAR(36) [FK]\\n    +model_id : VARCHAR(36) [FK]\\n}\\n\\nclass exam_session_cameras {\\n    +id : VARCHAR(36) [PK]\\n    +video_path : VARCHAR(255)\\n    +camera_id : VARCHAR(36) [FK]\\n    +exam_session_id : VARCHAR(36) [FK]\\n}\\n\\nclass exam_session_details {\\n    +id : VARCHAR(36) [PK]\\n    +status : VARCHAR(255)\\n    +seat_number : VARCHAR(255)\\n    +note : VARCHAR(255)\\n    +student_id : VARCHAR(36) [FK]\\n    +exam_session_id : VARCHAR(36) [FK]\\n}\\n\\nclass recognition_results {\\n    +id : VARCHAR(36) [PK]\\n    +violation_type : VARCHAR(255)\\n    +confidence : DOUBLE\\n    +detection_time : VARCHAR(255)\\n    +detail : VARCHAR(255)\\n    +image_url : VARCHAR(255)\\n    +model_id : VARCHAR(36) [FK]\\n    +exam_session_camera_id : VARCHAR(36) [FK]\\n}\\n\\n' Relationships\\nusers <|-- students : \\\"extends\\\"\\nsamples \\\"1\\\" -- \\\"0..*\\\" model_samples : \\\"has\\\"\\nmodels \\\"1\\\" -- \\\"0..*\\\" model_samples : \\\"has\\\"\\nrooms \\\"1\\\" -- \\\"0..*\\\" exam_sessions : \\\"holds\\\"\\nsubjects \\\"1\\\" -- \\\"0..*\\\" exam_sessions : \\\"has\\\"\\nmodels \\\"1\\\" -- \\\"0..*\\\" exam_sessions : \\\"uses\\\"\\ncameras \\\"1\\\" -- \\\"0..*\\\" exam_session_cameras : \\\"monitors\\\"\\nexam_sessions \\\"1\\\" -- \\\"0..*\\\" exam_session_cameras : \\\"records\\\"\\nstudents \\\"1\\\" -- \\\"0..*\\\" exam_session_details : \\\"assigned\\\"\\nexam_sessions \\\"1\\\" -- \\\"0..*\\\" exam_session_details : \\\"includes\\\"\\nmodels \\\"1\\\" -- \\\"0..*\\\" recognition_results : \\\"classified by\\\"\\nexam_session_cameras \\\"1\\\" -- \\\"0..*\\\" recognition_results : \\\"captured\\\"\\n\\n@endum\", \"config\": null}"
+          }
+        }
+      ]
+    }
+  ]
+}

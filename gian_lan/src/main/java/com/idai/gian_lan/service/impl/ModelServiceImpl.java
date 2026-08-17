@@ -36,10 +36,6 @@ public class ModelServiceImpl implements ModelService {
                 ? request.getStatus().toUpperCase()
                 : STATUS_INACTIVE;
 
-        if (STATUS_ACTIVE.equalsIgnoreCase(status)) {
-            deactivateAllModels();
-        }
-
         Model model = modelMapper.toModel(request);
         model.setStatus(status);
 

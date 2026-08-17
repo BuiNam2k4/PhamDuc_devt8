@@ -8,6 +8,7 @@ import UserPage from './pages/UserPage';
 import DashboardPage from './pages/DashboardPage';
 import ModelManagementPage from './pages/ModelManagementPage';
 import RealtimeMonitoringPage from './pages/RealtimeMonitoringPage';
+import CameraTestPage from './pages/camera-test';
 import OfflineAnalysisPage from './pages/OfflineAnalysisPage';
 import ViolationLogsPage from './pages/ViolationLogsPage';
 import RoomManagementPage from './pages/RoomManagementPage';
@@ -46,6 +47,7 @@ export default function App() {
             <Route index element={<DashboardPage />} />
             <Route path="models" element={<ModelManagementPage />} />
             <Route path="realtime" element={<RealtimeMonitoringPage />} />
+            <Route path="cam-test" element={<CameraTestPage />} />
             <Route path="offline" element={<OfflineAnalysisPage />} />
             <Route path="logs" element={<ViolationLogsPage />} />
             <Route path="rooms" element={<RoomManagementPage />} />
