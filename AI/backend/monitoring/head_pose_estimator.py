@@ -20,7 +20,7 @@ class HeadPoseEstimator:
         options = FaceLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=MODEL_PATH),
             running_mode=RunningMode.IMAGE,
-            num_faces=1,
+            num_faces=5,  # Hỗ trợ phát hiện tối đa 5 khuôn mặt cùng lúc
             min_face_detection_confidence=0.5,
             min_tracking_confidence=0.5,
         )
@@ -46,12 +46,12 @@ class HeadPoseEstimator:
             291   # Right mouth corner
         ]
     
-    def estimate_pose(self, frame, face_info=None):
+    def estimate_poses(self, frame):
         """
-        Ước tính head pose từ frame
+        Ước tính head pose cho tất cả các khuôn mặt trong frame.
         
         Returns:
-            tuple: (yaw, pitch, roll) trong degrees
+            list[dict]: Danh sách chứa yaw, pitch, roll và center_pixel cho từng khuôn mặt
         """
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
@@ -59,19 +59,10 @@ class HeadPoseEstimator:
         result = self.landmarker.detect(mp_image)
         
         if not result.face_landmarks:
-            return 0.0, 0.0, 0.0
+            return []
         
-        face_landmarks = result.face_landmarks[0]
         h, w = frame.shape[:2]
-        image_points = []
-        
-        for idx in self.landmark_indices:
-            landmark = face_landmarks[idx]
-            x = int(landmark.x * w)
-            y = int(landmark.y * h)
-            image_points.append([x, y])
-        
-        image_points = np.array(image_points, dtype=np.float32)
+        poses = []
         
         focal_length = w
         center = (w // 2, h // 2)
@@ -83,20 +74,52 @@ class HeadPoseEstimator:
         
         dist_coeffs = np.zeros((4, 1))
         
-        success, rotation_vector, translation_vector = cv2.solvePnP(
-            self.model_points,
-            image_points,
-            camera_matrix,
-            dist_coeffs
-        )
+        for face_landmarks in result.face_landmarks:
+            image_points = []
+            for idx in self.landmark_indices:
+                landmark = face_landmarks[idx]
+                x = int(landmark.x * w)
+                y = int(landmark.y * h)
+                image_points.append([x, y])
+            
+            image_points = np.array(image_points, dtype=np.float32)
+            
+            success, rotation_vector, translation_vector = cv2.solvePnP(
+                self.model_points,
+                image_points,
+                camera_matrix,
+                dist_coeffs
+            )
+            
+            if success:
+                rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
+                yaw, pitch, roll = self._rotation_matrix_to_euler_angles(rotation_matrix)
+                
+                # Lấy điểm mũi (nose tip, index 1) làm center_pixel cho khuôn mặt
+                nose = face_landmarks[1]
+                nose_x = int(nose.x * w)
+                nose_y = int(nose.y * h)
+                
+                poses.append({
+                    'yaw': yaw,
+                    'pitch': pitch,
+                    'roll': roll,
+                    'center_pixel': (nose_x, nose_y)
+                })
+                
+        return poses
+    
+    def estimate_pose(self, frame, face_info=None):
+        """
+        Ước tính head pose từ frame (phiên bản tương thích ngược cho 1 mặt)
         
-        if not success:
-            return 0.0, 0.0, 0.0
-        
-        rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
-        yaw, pitch, roll = self._rotation_matrix_to_euler_angles(rotation_matrix)
-        
-        return yaw, pitch, roll
+        Returns:
+            tuple: (yaw, pitch, roll) trong degrees
+        """
+        poses = self.estimate_poses(frame)
+        if poses:
+            return poses[0]['yaw'], poses[0]['pitch'], poses[0]['roll']
+        return 0.0, 0.0, 0.0
     
     def _rotation_matrix_to_euler_angles(self, R):
         """

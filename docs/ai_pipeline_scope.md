@@ -21,19 +21,21 @@ Hệ thống sẽ không cố gắng nhận diện tất cả các loại hành 
 Luồng pipeline tiêu chuẩn:
 RTSP (Camera) -> Giải mã -> YOLOv8 -> Tracking -> MediaPipe Pose -> Chuỗi thời gian -> LSTM -> Xác nhận sự kiện -> Lưu bằng chứng -> WebSocket
 
-### Bảng so sánh Hiện trạng (Đã làm được vs Chưa làm được)
+### Bảng Kế hoạch Phát triển & Đối chiếu Hiện trạng (Sắp xếp theo thứ tự thực hiện từ trên xuống dưới)
 
-| Bước trong Pipeline | Trạng thái hiện tại | Chi tiết kỹ thuật đã có / Cần bổ sung |
-| :--- | :--- | :--- |
-| **1. RTSP Input & Decode** | `Chưa hoàn thiện` | **Hiện tại:** Nhận ảnh Base64 kịch bản webcam gửi qua WebSocket.<br>**Cần bổ sung:** Code kết nối luồng RTSP trực tiếp bằng `cv2.VideoCapture("rtsp://...")` đối với camera phòng thi. |
-| **2. YOLOv8 Detection** | `Đã hoàn thành` | Tích hợp thành công **YOLOv8 Nano (`yolov8n.pt`)** để nhận diện các vật thể mục tiêu: người, điện thoại, sách/vở, máy tính, v.v. |
-| **3. Multi-Person Tracking** | `Chưa có` | **Hiện tại:** Phân tích từng frame độc lập, không giữ được danh tính (ID) của người thi.<br>**Cần bổ sung:** Tích hợp bộ theo vết **ByteTrack** hoặc **SORT** để gán ID cố định cho từng thí sinh. |
-| **4. MediaPipe Pose** | `Chưa có` | **Hiện tại:** Chỉ dùng FaceMesh để tính góc đầu.<br>**Cần bổ sung:** Sử dụng **MediaPipe Pose** trích xuất 33 điểm landmarks xương cơ thể để phục vụ việc nhận diện cử chỉ tay/thân người. |
-| **5. Time-Series Buffer** | `Chưa có` | **Hiện tại:** Chưa lưu trữ lịch sử frame cũ.<br>**Cần bổ sung:** Xây dựng hàng đợi (Queue) lưu chuỗi landmarks dài 30-50 frames cho mỗi ID thí sinh. |
-| **6. LSTM Classifier** | `Chưa có` | **Hiện tại:** Dùng các ngưỡng tĩnh (threshold) thô sơ để phạt vi phạm tức thời.<br>**Cần bổ sung:** Load model mạng hồi quy LSTM đã huấn luyện để phân loại chuỗi hành động động từ chuỗi thời gian keypoints. |
-| **7. Xác nhận sự kiện** | `Đã có một phần` | **Hiện tại:** Dựa trên thời gian vi phạm tích lũy liên tục (ví dụ: quay đầu quá 2s).<br>**Cần sửa đổi:** Bỏ cơ chế cooldown cố định 5 giây (để tránh bỏ lọt vi phạm) và thay thế bằng thuật toán bỏ phiếu (voting) trên cửa sổ thời gian (sliding window) của LSTM để xác thực sự kiện. |
-| **8. Lưu bằng chứng** | `Chưa có` | **Hiện tại:** Chỉ lưu log tạm trong RAM của Python.<br>**Cần bổ sung:** Chụp frame vi phạm, lưu vào folder `evidence/` và viết HTTP client gọi REST API `POST /api/violations` sang Java Spring Boot để ghi nhận DB. |
-| **9. WebSocket Alert** | `Đã hoàn thành` | Phát tín hiệu JSON chứa thông tin vi phạm theo thời gian thực về Frontend qua kênh WebSocket để hiển thị tức thời lên Dashboard. |
+| Thứ tự thực hiện | Bước trong Pipeline | Trạng thái hiện tại | Chi tiết kỹ thuật & Kế hoạch thực hiện |
+| :--- | :--- | :--- | :--- |
+| **1** | **Webcam & WebSocket Test Sandbox (Trang Test Admin)** | `Đã hoàn thành` | Đã xây dựng hoàn tất trang kiểm thử `/admin/camera-test`. Cho phép nhà phát triển mở camera cục bộ, chụp ảnh Base64 gửi liên tục lên FastAPI qua WebSocket và nhận phản hồi trực quan các thông số (Yaw/Pitch/Roll, Objects, Face count) thời gian thực. |
+| **2** | **Decode & YOLOv8 Object & Person Detection** | `Đã hoàn thành` | Tích hợp thành công **YOLOv8 Nano** để phát hiện các vật thể mục tiêu: Người (`person`), Điện thoại (`cell phone`), Sách/vở (`book`). YOLOv8 chỉ làm nhiệm vụ phát hiện vật thể và xác nhận sự hiện diện của người. |
+| **3** | **Multi-Person Tracking (ByteTrack)** | `Đã hoàn thành` | Tích hợp **ByteTrack** (có sẵn trong Ultralytics) bằng cách chuyển `model()` → `model.track(persist=True)`. Mỗi `person` phát hiện được gắn `track_id` ổn định qua các frame. Danh sách `tracked_persons` được trả về trong response WebSocket để Bước 4 (MediaPipe Pose) dùng chạy riêng cho từng thí sinh.<br>⚠️ **Nợ kỹ thuật (Technical Debt):** Hiện tại `ObjectDetector` là **global singleton** dùng chung cho toàn server — khi nhiều thí sinh kết nối đồng thời, Tracker state bị lẫn lộn giữa các phòng thi, dẫn đến `track_id` không chính xác. **Cần sửa khi scale:** Tạo một instance `ObjectDetector` riêng biệt cho từng WebSocket session (`session_id`), thay vì dùng chung 1 global instance. |
+| **4** | **MediaPipe Landmarks (Face & Body)** | `Đã hoàn thành` | Tích hợp **MediaPipe Pose** (33 điểm xương cơ thể) chạy đồng thời với **Face Mesh** (đo góc quay đầu). Tự động ánh xạ landmarks tương ứng vào từng thí sinh (`tracked_persons`) thông qua so khớp tọa độ không gian. Vẽ khung xương cơ thể trực quan khi lưu bằng chứng vi phạm. |
+| **5** | **Time-Series Buffer & LSTM** | `Chưa có` | **Hiện tại:** Chưa lưu lịch sử frame.<br>**Cần bổ sung:** Xây dựng hàng đợi (Queue) lưu landmarks dài 30-50 frames và load model LSTM để nhận dạng hành động động. |
+| **6** | **Lưu bằng chứng & Gọi API Java** | `Chưa có` | **Hiện tại:** Chỉ lưu log tạm trong RAM Python.<br>**Cần bổ sung:** Chụp frame vi phạm lưu vào folder `evidence/` và viết HTTP client gọi REST API `POST /api/violations` của Spring Boot để lưu vào MySQL. |
+| **7** | **Xác nhận sự kiện (Voting)** | `Đã có một phần` | **Hiện tại:** Dùng ngưỡng thời gian tĩnh.<br>**Cần sửa đổi:** Sử dụng thuật toán bỏ phiếu (voting) trên cửa sổ thời gian trượt (sliding window) để xác nhận vi phạm và giảm thiểu false positive. |
+| **8** | **WebSocket Alert (Real-time)** | `Đã hoàn thành` | Gửi tín hiệu vi phạm JSON về Frontend để Dashboard giám sát hiển thị thông báo. |
+| **9** | **Kết nối Thí sinh (UserPage.tsx Integration)** | `Chưa hoàn thiện` | **Kế hoạch:** Sau khi hoàn tất kiểm thử và tinh chỉnh toàn bộ các bước AI trên trang Test Sandbox, tiến hành tích hợp luồng gửi ảnh tự động từ camera của Thí sinh (`UserPage.tsx`) trong quá trình làm bài thi thực tế. |
+| **10 (Làm cuối)** | **RTSP Input & Decode Adapter** | `Chưa hoàn thiện` | **Hiện tại:** Mới nhận ảnh Base64 từ WebSocket.<br>**Cần bổ sung ở Giai đoạn 2:** Viết bộ adapter nhận luồng camera IP trực tiếp qua giao thức RTSP bằng `cv2.VideoCapture("rtsp://...")`. |
+
 
 ---
 
@@ -84,8 +86,9 @@ Cuối tháng cần chứng minh khả năng đáp ứng mục tiêu **dưới 1
 * **Mục tiêu:** Xây dựng trọn vẹn luồng dữ liệu hai chiều và hoàn thiện lõi phân tích AI (YOLOv8 -> Tracking -> MediaPipe -> LSTM -> Spring Boot DB).
 * **Cách thực hiện:**
   * Sử dụng webcam tích hợp trên laptop/máy tính của lập trình viên.
-  * Phía React Frontend sẽ chụp frame ảnh từ webcam, mã hóa thành chuỗi Base64 và liên tục gửi qua WebSocket tới cổng `ws://localhost:8000/ws` của Python AI.
-  * Phía Python AI nhận chuỗi Base64, decode ra mảng pixel thông thường để chạy thử nghiệm và tối ưu hóa model nhận diện.
+  * **Trang kiểm thử (Phát triển & Debug):** Sử dụng trang **"Thử nghiệm AI Cam" (`/admin/camera-test`)** để mở camera local, vẽ overlay và gửi Base64 qua WebSocket lên Python AI Server, đồng thời nhận phản hồi để hiển thị kết quả đo lường và theo dõi các thông số phát hiện (Yaw/Pitch/Roll, Objects, Violations).
+  * **Đồng bộ hóa cảnh báo:** Python AI Server sau khi nhận diện vi phạm sẽ tự động broadcast kết quả qua WebSocket đến tất cả các client đang mở (bao gồm cả màn hình giám sát phòng thi Admin `RealtimeMonitoringPage.tsx`).
+  * **Tích hợp chính thức (Cuối cùng):** Sau khi toàn bộ các bước xử lý (YOLO, Tracking, Pose, LSTM, DB) chạy trơn tru, chúng ta mới sao chép luồng gửi ảnh tự động này vào trang thi của Thí sinh (`UserPage.tsx`) để đưa vào vận hành thực tế.
 * **Lý do lựa chọn:** Giúp quá trình phát triển diễn ra nhanh chóng, dễ dàng debug lỗi và có sẵn giao diện trực quan để demo cho hội đồng chấm mà không cần bất kỳ cài đặt phần cứng mạng nào.
 
 ### Giai đoạn 2: Tích hợp và Kiểm thử luồng RTSP (Hoàn thành sau)

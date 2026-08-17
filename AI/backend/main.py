@@ -15,6 +15,7 @@ from monitoring.face_detector import FaceDetectorWrapper
 from monitoring.head_pose_estimator import HeadPoseEstimator
 from monitoring.object_detector import ObjectDetector
 from monitoring.violation_detector import ViolationDetector
+from monitoring.pose_detector import PoseDetectorWrapper
 
 # Setup directory for saving evidence pictures
 EVIDENCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "evidence")
@@ -25,6 +26,7 @@ face_detector = FaceDetectorWrapper()
 head_pose_estimator = HeadPoseEstimator()
 object_detector = ObjectDetector()
 violation_detector = ViolationDetector()
+pose_detector = PoseDetectorWrapper()
 
 app = FastAPI(
     title="AI Exam Monitoring Service",
@@ -111,23 +113,94 @@ async def process_frame(frame_data: str, timestamp: int):
         if frame is None:
             return {"type": "error", "message": "Invalid frame image format"}
         
-        # 1. Face detection
+        # 1. Face detection (for total count in frame)
         faces = face_detector.detect_faces(frame)
         face_count = len(faces)
         
-        # 2. Head pose estimation
-        head_yaw, head_pitch, head_roll = 0.0, 0.0, 0.0
-        if face_count > 0:
-            head_yaw, head_pitch, head_roll = head_pose_estimator.estimate_pose(frame, faces[0])
+        # 2. Multi head pose estimation using Face Mesh
+        head_poses = head_pose_estimator.estimate_poses(frame)
         
-        # 3. Brightness check
+        # 3. Multi body pose estimation using MediaPipe Pose
+        body_poses = pose_detector.detect_poses(frame)
+        
+        # 4. Brightness check
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         brightness = float(np.mean(gray) / 255.0 * 100)
         
-        # 4. Object detection (YOLOv8)
+        # 5. Object detection + ByteTrack tracking (YOLOv8)
         objects = object_detector.detect_objects(frame)
+
+        # Tách danh sách persons đã được gán track_id ra riêng
+        tracked_persons = [
+            obj for obj in objects
+            if obj['class_name'] == 'person' and obj['track_id'] != -1
+        ]
         
-        # 5. Violation evaluation
+        # Ánh xạ body poses và head poses vào từng tracked_person dựa trên bbox
+        for p in tracked_persons:
+            px, py, pw, ph = p['bbox']
+            p_center = p['center']
+            
+            # Khớp Body Pose
+            matching_pose = None
+            for bp in body_poses:
+                cx, cy = bp['center_pixel']
+                if px <= cx <= px + pw and py <= cy <= py + ph:
+                    matching_pose = bp
+                    break
+            if not matching_pose and body_poses:
+                # Tìm pose có khoảng cách tâm gần nhất
+                min_d = float('inf')
+                for bp in body_poses:
+                    cx, cy = bp['center_pixel']
+                    dist = (cx - p_center[0])**2 + (cy - p_center[1])**2
+                    if dist < min_d:
+                        min_d = dist
+                        matching_pose = bp
+                # Giới hạn khoảng cách tối đa để tránh gán nhầm
+                if min_d > (pw**2 + ph**2) * 1.5:
+                    matching_pose = None
+            
+            p['pose_landmarks'] = matching_pose['landmarks'] if matching_pose else []
+            
+            # Khớp Head Pose (Face Mesh)
+            matching_hp = None
+            for hp in head_poses:
+                hx, hy = hp['center_pixel']
+                if px <= hx <= px + pw and py <= hy <= py + ph:
+                    matching_hp = hp
+                    break
+            if not matching_hp and head_poses:
+                # Tìm head pose có khoảng cách tâm gần nhất
+                min_d = float('inf')
+                for hp in head_poses:
+                    hx, hy = hp['center_pixel']
+                    dist = (hx - p_center[0])**2 + (hy - p_center[1])**2
+                    if dist < min_d:
+                        min_d = dist
+                        matching_hp = hp
+                if min_d > (pw**2 + ph**2) * 1.5:
+                    matching_hp = None
+            
+            p['head_pose'] = {
+                'yaw': round(matching_hp['yaw'], 2) if matching_hp else 0.0,
+                'pitch': round(matching_hp['pitch'], 2) if matching_hp else 0.0,
+                'roll': round(matching_hp['roll'], 2) if matching_hp else 0.0
+            }
+            
+        # Xác định head pose chính (của người đầu tiên hoặc face đầu tiên) để tương thích ngược với violation_detector
+        head_yaw, head_pitch, head_roll = 0.0, 0.0, 0.0
+        if tracked_persons:
+            p0 = tracked_persons[0]
+            head_yaw = p0['head_pose']['yaw']
+            head_pitch = p0['head_pose']['pitch']
+            head_roll = p0['head_pose']['roll']
+        elif head_poses:
+            head_yaw = head_poses[0]['yaw']
+            head_pitch = head_poses[0]['pitch']
+            head_roll = head_poses[0]['roll']
+        
+        # 6. Violation evaluation
         violations = violation_detector.check_violations(
             face_count=face_count,
             head_yaw=head_yaw,
@@ -145,6 +218,19 @@ async def process_frame(frame_data: str, timestamp: int):
             "head_roll": round(head_roll, 2),
             "brightness": round(brightness, 2),
             "objects": objects,
+            # tracked_persons: danh sách người đã được ByteTrack gán ID ổn định
+            # Format: [{ track_id, bbox, confidence, center, pose_landmarks, head_pose }, ...]
+            "tracked_persons": [
+                {
+                    "track_id": p["track_id"],
+                    "bbox": p["bbox"],
+                    "confidence": round(p["confidence"], 2),
+                    "center": p["center"],
+                    "pose_landmarks": p.get("pose_landmarks", []),
+                    "head_pose": p.get("head_pose", {"yaw": 0.0, "pitch": 0.0, "roll": 0.0})
+                }
+                for p in tracked_persons
+            ],
             "timestamp": timestamp
         }
         
@@ -161,9 +247,12 @@ async def process_frame(frame_data: str, timestamp: int):
                 filename = f"evidence_{time_str}_{violation_type}.jpg"
                 filepath = os.path.join(EVIDENCE_DIR, filename)
                 
-                # Draw boxes/info on frame copy
+                # Draw boxes/info/skeleton on frame copy
                 annotated_frame = frame.copy()
                 fh, fw = frame.shape[:2]
+                
+                # Draw skeletons/poses
+                annotated_frame = pose_detector.draw_poses(annotated_frame, body_poses)
                 
                 # Draw faces
                 for face in faces:
