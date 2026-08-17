@@ -27,13 +27,21 @@ class ObjectDetector:
     
     def detect_objects(self, frame):
         """
-        Phát hiện các objects trong frame
+        Phát hiện và tracking objects trong frame.
+        Sử dụng ByteTrack (tích hợp sẵn trong Ultralytics) để gán track_id
+        cố định cho từng đối tượng xuyên suốt nhiều frame liên tiếp.
+
+        Returns:
+            list[dict]: Mỗi phần tử chứa thông tin vật thể + track_id (nếu có).
+                        track_id = -1 nếu không track được.
         """
         if self.model is None:
             return []
         
         try:
-            results = self.model(frame, verbose=False)
+            # Dùng model.track() thay vì model() để bật ByteTrack
+            # persist=True: giữ track_id ổn định giữa các frame liên tiếp
+            results = self.model.track(frame, persist=True, verbose=False)
             detected_objects = []
             
             for result in results:
@@ -47,7 +55,11 @@ class ObjectDetector:
                         if confidence >= self.confidence_threshold:
                             x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                             
+                            # Lấy track_id từ ByteTrack (-1 nếu chưa được gán ID)
+                            track_id = int(box.id[0]) if box.id is not None else -1
+                            
                             obj_info = {
+                                'track_id': track_id,       # ID ổn định qua các frame
                                 'class_name': class_name,
                                 'class_id': class_id,
                                 'confidence': float(confidence),
@@ -61,12 +73,13 @@ class ObjectDetector:
             return detected_objects
             
         except Exception as e:
-            print(f"Error in object detection: {e}")
+            print(f"Error in object detection/tracking: {e}")
             return []
     
     def filter_suspicious_objects(self, objects):
         """
-        Lọc ra các objects khả nghi
+        Lọc ra các objects khả nghi, giữ lại track_id để
+        các bước sau (MediaPipe Pose, LSTM) biết cần xử lý ai.
         """
         suspicious = {
             'phones': [],
@@ -88,3 +101,4 @@ class ObjectDetector:
                 suspicious['electronics'].append(obj)
         
         return suspicious
+

@@ -36,7 +36,7 @@ export function useCameraTest() {
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const sendLoopRef = useRef<NodeJS.Timeout | null>(null);
+  const sendLoopRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
   // Load available camera devices & verify backend health
