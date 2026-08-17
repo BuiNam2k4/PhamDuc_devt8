@@ -53,6 +53,23 @@ venv.bak/
 test_captures/
 performance_report_*.json
 runs/
+evidence/
+**/evidence/
+
+# Image & Media Files (Prevent pushing screenshot/evidence images)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.webp
+*.ico
+
+# Exception: Allow project source/static assets
+!frontend/src/assets/**
+!frontend/public/**
+!**/src/main/resources/static/**
 
 # ------------------------------------------
 # Node.js & Web Frontend

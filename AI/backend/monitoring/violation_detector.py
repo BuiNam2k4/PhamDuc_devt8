@@ -22,8 +22,6 @@ class ViolationDetector:
         }
         
         self.recent_violations = deque(maxlen=100)
-        self.violation_cooldowns = defaultdict(float)
-        self.cooldown_duration = 5.0  # seconds
     
     def check_violations(self, face_count, head_yaw, head_pitch, brightness, objects, timestamp):
         """
@@ -68,15 +66,13 @@ class ViolationDetector:
     
     def _check_multiple_faces(self, face_count, current_time):
         if face_count > self.thresholds['multiple_faces_count']:
-            if self._is_cooldown_expired('multiple_faces', current_time):
-                self.violation_cooldowns['multiple_faces'] = current_time
-                return {
-                    'type': 'multiple_faces',
-                    'details': {
-                        'face_count': face_count,
-                        'threshold': self.thresholds['multiple_faces_count']
-                    }
+            return {
+                'type': 'multiple_faces',
+                'details': {
+                    'face_count': face_count,
+                    'threshold': self.thresholds['multiple_faces_count']
                 }
+            }
         return None
     
     def _check_face_missing(self, face_count, current_time):
@@ -86,15 +82,13 @@ class ViolationDetector:
             else:
                 duration = current_time - self.violation_states['face_missing_start']
                 if duration >= self.thresholds['face_missing_duration']:
-                    if self._is_cooldown_expired('face_missing', current_time):
-                        self.violation_cooldowns['face_missing'] = current_time
-                        return {
-                            'type': 'face_not_detected',
-                            'details': {
-                                'duration': round(duration, 2),
-                                'threshold': self.thresholds['face_missing_duration']
-                            }
+                    return {
+                        'type': 'face_not_detected',
+                        'details': {
+                            'duration': round(duration, 2),
+                            'threshold': self.thresholds['face_missing_duration']
                         }
+                    }
         else:
             self.violation_states['face_missing_start'] = None
         
@@ -112,19 +106,17 @@ class ViolationDetector:
             else:
                 duration = current_time - self.violation_states['look_away_start']
                 if duration >= self.thresholds['look_away_duration']:
-                    if self._is_cooldown_expired('look_away', current_time):
-                        self.violation_cooldowns['look_away'] = current_time
-                        direction = self._get_look_direction(head_yaw, head_pitch)
-                        
-                        return {
-                            'type': 'look_away',
-                            'details': {
-                                'head_yaw': round(head_yaw, 2),
-                                'head_pitch': round(head_pitch, 2),
-                                'direction': direction,
-                                'duration': round(duration, 2)
-                            }
+                    direction = self._get_look_direction(head_yaw, head_pitch)
+                    
+                    return {
+                        'type': 'look_away',
+                        'details': {
+                            'head_yaw': round(head_yaw, 2),
+                            'head_pitch': round(head_pitch, 2),
+                            'direction': direction,
+                            'duration': round(duration, 2)
                         }
+                    }
         else:
             self.violation_states['look_away_start'] = None
         
@@ -132,27 +124,23 @@ class ViolationDetector:
     
     def _check_brightness(self, brightness, current_time):
         if brightness < self.thresholds['brightness_min']:
-            if self._is_cooldown_expired('camera_dark', current_time):
-                self.violation_cooldowns['camera_dark'] = current_time
-                return {
-                    'type': 'camera_blocked',
-                    'details': {
-                        'brightness': round(brightness, 2),
-                        'reason': 'too_dark',
-                        'threshold': self.thresholds['brightness_min']
-                    }
+            return {
+                'type': 'camera_blocked',
+                'details': {
+                    'brightness': round(brightness, 2),
+                    'reason': 'too_dark',
+                    'threshold': self.thresholds['brightness_min']
                 }
+            }
         elif brightness > self.thresholds['brightness_max']:
-            if self._is_cooldown_expired('camera_bright', current_time):
-                self.violation_cooldowns['camera_bright'] = current_time
-                return {
-                    'type': 'camera_blocked',
-                    'details': {
-                        'brightness': round(brightness, 2),
-                        'reason': 'too_bright',
-                        'threshold': self.thresholds['brightness_max']
-                    }
+            return {
+                'type': 'camera_blocked',
+                'details': {
+                    'brightness': round(brightness, 2),
+                    'reason': 'too_bright',
+                    'threshold': self.thresholds['brightness_max']
                 }
+            }
         
         return None
     
@@ -163,8 +151,7 @@ class ViolationDetector:
         extra_persons = [obj for obj in objects if obj['class_name'] == 'person']
         books = [obj for obj in objects if obj['class_name'] == 'book']
         
-        if phones and self._is_cooldown_expired('phone_detected', current_time):
-            self.violation_cooldowns['phone_detected'] = current_time
+        if phones:
             violations.append({
                 'type': 'phone_detected',
                 'details': {
@@ -172,8 +159,7 @@ class ViolationDetector:
                 }
             })
         
-        if len(extra_persons) > 1 and self._is_cooldown_expired('extra_person', current_time):
-            self.violation_cooldowns['extra_person'] = current_time
+        if len(extra_persons) > 1:
             violations.append({
                 'type': 'multiple_faces',
                 'details': {
@@ -182,8 +168,7 @@ class ViolationDetector:
                 }
             })
         
-        if books and self._is_cooldown_expired('book_detected', current_time):
-            self.violation_cooldowns['book_detected'] = current_time
+        if books:
             violations.append({
                 'type': 'suspicious_object',
                 'details': {
@@ -206,10 +191,6 @@ class ViolationDetector:
         
         return "chỗ khác"
     
-    def _is_cooldown_expired(self, violation_type, current_time):
-        last_time = self.violation_cooldowns.get(violation_type, 0)
-        return current_time - last_time >= self.cooldown_duration
-    
     def reset_states(self):
         self.violation_states = {
             'face_missing_start': None,
@@ -217,5 +198,4 @@ class ViolationDetector:
             'last_face_count': 0,
             'consecutive_violations': defaultdict(int)
         }
-        self.violation_cooldowns.clear()
         self.recent_violations.clear()
