@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #0B0F19;
+    color: #F3F4F6;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+}
+
+/* Glassmorphism & Custom Animations */
+.glass-panel {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-accent {
+  background: rgba(30, 41, 59, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+@keyframes alert-pulse {
+
+  0%,
+  100% {
+    border-color: rgba(239, 68, 68, 0.9);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+  }
+
+  50% {
+    border-color: rgba(239, 68, 68, 0.3);
+    box-shadow: 0 0 5px rgba(239, 68, 68, 0.2);
+  }
+}
+
+.animate-alert-border {
+  animation: alert-pulse 1.2s infinite ease-in-out;
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.8));
+  }
+
+  50% {
+    opacity: 0.7;
+    filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.3));
+  }
+}
+
+.animate-active-glow {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
