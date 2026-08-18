@@ -3,6 +3,7 @@ import base64
 import cv2
 import numpy as np
 import os
+import logging
 from datetime import datetime
 import asyncio
 from contextlib import asynccontextmanager
@@ -14,8 +15,13 @@ from fastapi.responses import JSONResponse
 from monitoring.face_detector import FaceDetectorWrapper
 from monitoring.head_pose_estimator import HeadPoseEstimator
 from monitoring.object_detector import ObjectDetector
-from monitoring.violation_detector import ViolationDetector
+from monitoring.violation_detector import ViolationDetector, ViolationDetectorV2
 from monitoring.pose_detector import PoseDetectorWrapper
+from monitoring.spring_boot_client import SpringBootClient
+
+# Logging setup
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(message)s')
+logger = logging.getLogger('ai-server')
 
 # Setup directory for saving evidence pictures
 EVIDENCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "evidence")
@@ -25,13 +31,28 @@ os.makedirs(EVIDENCE_DIR, exist_ok=True)
 face_detector = FaceDetectorWrapper()
 head_pose_estimator = HeadPoseEstimator()
 object_detector = ObjectDetector()
-violation_detector = ViolationDetector()
+violation_detector_legacy = ViolationDetector()  # Giữ lại cho backward compat
+violation_detector = ViolationDetectorV2(buffer_size=30, stale_timeout=30.0)
 pose_detector = PoseDetectorWrapper()
+spring_boot_client = SpringBootClient()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Quản lý vòng đời server: startup → shutdown."""
+    logger.info("🚀 AI Server starting up...")
+    logger.info(f"📡 Spring Boot target: {spring_boot_client.base_url}")
+    yield
+    # Shutdown: đóng HTTP session
+    await spring_boot_client.close()
+    logger.info("🛑 AI Server shut down.")
+
 
 app = FastAPI(
     title="AI Exam Monitoring Service",
     description="Realtime webcam analysis for online exam cheating detection using MediaPipe & YOLO",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Enable CORS for React Frontend (3000/5173) & Spring Boot Backend (8080)
@@ -200,15 +221,17 @@ async def process_frame(frame_data: str, timestamp: int):
             head_pitch = head_poses[0]['pitch']
             head_roll = head_poses[0]['roll']
         
-        # 6. Violation evaluation
+        # 6. Violation evaluation (V2: Time-Series Buffer + Voting)
         violations = violation_detector.check_violations(
+            tracked_persons=tracked_persons,
             face_count=face_count,
-            head_yaw=head_yaw,
-            head_pitch=head_pitch,
             brightness=brightness,
             objects=objects,
             timestamp=timestamp
         )
+        
+        # Lấy thống kê buffer để gửi về frontend (debug/monitoring)
+        buffer_stats = violation_detector.get_buffer_stats()
         
         response = {
             "type": "detection",
@@ -231,20 +254,38 @@ async def process_frame(frame_data: str, timestamp: int):
                 }
                 for p in tracked_persons
             ],
+            "buffer_stats": buffer_stats,
             "timestamp": timestamp
         }
         
         if violations:
             response["type"] = "violation"
             response["violation_type"] = violations[0]["type"]
+            response["violation_source"] = violations[0].get("source", "unknown")
+            response["violation_confidence"] = violations[0].get("confidence", 1.0)
+            response["violation_track_id"] = violations[0].get("track_id", -1)
             response["details"] = violations[0]["details"]
+            
+            # Gửi tất cả vi phạm (nếu có nhiều hơn 1)
+            if len(violations) > 1:
+                response["all_violations"] = [
+                    {
+                        "type": v["type"],
+                        "source": v.get("source", "unknown"),
+                        "confidence": v.get("confidence", 1.0),
+                        "track_id": v.get("track_id", -1),
+                        "details": v["details"]
+                    }
+                    for v in violations
+                ]
             
             # Save annotated evidence image
             try:
                 dt_obj = datetime.fromtimestamp(timestamp / 1000)
                 time_str = dt_obj.strftime("%Y%m%d_%H%M%S")
                 violation_type = violations[0]["type"]
-                filename = f"evidence_{time_str}_{violation_type}.jpg"
+                v_source = violations[0].get('source', 'unknown')
+                filename = f"evidence_{time_str}_{violation_type}_{v_source}.jpg"
                 filepath = os.path.join(EVIDENCE_DIR, filename)
                 
                 # Draw boxes/info/skeleton on frame copy
@@ -288,9 +329,36 @@ async def process_frame(frame_data: str, timestamp: int):
                 
                 # Write file
                 cv2.imwrite(filepath, annotated_frame)
-                print(f"📸 Saved evidence image: {filepath}")
+                logger.info(f"📸 Saved evidence image: {filepath}")
+                
+                # === BƯỚC 6: Gửi vi phạm lên Spring Boot (fire-and-forget) ===
+                async def _send_to_spring_boot(v, fp):
+                    try:
+                        detail_text = spring_boot_client.build_detail_text(v)
+                        result = await spring_boot_client.send_violation(
+                            violation_type=v['type'],
+                            confidence=v.get('confidence', 1.0),
+                            detail=detail_text,
+                            image_path=fp,
+                            detection_time=datetime.fromtimestamp(
+                                timestamp / 1000
+                            ).strftime('%Y-%m-%d %H:%M:%S'),
+                        )
+                        if result['success']:
+                            logger.info(f"📤 Vi phạm đã ghi vào DB Spring Boot")
+                        else:
+                            logger.warning(
+                                f"⚠️ Không gửi được vi phạm lên Spring Boot: "
+                                f"{result['error']}"
+                            )
+                    except Exception as api_err:
+                        logger.error(f"❌ Lỗi gọi Spring Boot API: {api_err}")
+                
+                # Chạy async không chờ để không block frame processing
+                asyncio.create_task(_send_to_spring_boot(violations[0], filepath))
+                
             except Exception as save_err:
-                print(f"Error saving evidence image: {save_err}")
+                logger.error(f"Error saving evidence image: {save_err}")
         
         return response
         
@@ -302,6 +370,21 @@ async def process_frame(frame_data: str, timestamp: int):
 async def get_violations():
     """Trả về danh sách vi phạm gần nhất lưu tạm trên bộ nhớ (In-memory)"""
     return {"violations": list(violation_detector.recent_violations)}
+
+@app.get("/api/buffer-stats")
+async def get_buffer_stats():
+    """Trả về thống kê Time-Series Buffer (debug/monitoring)"""
+    return violation_detector.get_buffer_stats()
+
+@app.get("/api/analyzer-config")
+async def get_analyzer_config():
+    """Trả về cấu hình Behavior Analyzer hiện tại"""
+    return violation_detector.get_config()
+
+@app.get("/api/spring-boot-stats")
+async def get_spring_boot_stats():
+    """Trả về thống kê giao tiếp với Spring Boot Backend"""
+    return spring_boot_client.get_stats()
 
 if __name__ == "__main__":
     import uvicorn

@@ -22,3 +22,6 @@ server:
 
 jwt:
   signerKey: ${JWT_SIGNER_KEY:5baaaf12f51417a4d22b9ec13164b852047f60fc236950d15020e715d128da8a}
+
+app:
+  api-key: ${APP_API_KEY:super-secret-ai-token-123}
