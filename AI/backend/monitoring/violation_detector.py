@@ -1,6 +1,9 @@
 import time
 from collections import defaultdict, deque
 
+from monitoring.time_series_buffer import TimeSeriesManager, LANDMARK_INDICES
+from monitoring.behavior_analyzer import BehaviorAnalyzer
+
 class ViolationDetector:
     def __init__(self):
         # Thresholds cho các loại vi phạm
@@ -199,3 +202,243 @@ class ViolationDetector:
             'consecutive_violations': defaultdict(int)
         }
         self.recent_violations.clear()
+
+
+class ViolationDetectorV2:
+    """
+    Phiên bản nâng cấp sử dụng Time-Series Buffer + Voting.
+    
+    Thay vì kiểm tra từng frame riêng lẻ, phiên bản này lưu dữ liệu
+    qua nhiều frame (sliding window) và dùng thuật toán bỏ phiếu (voting)
+    để xác nhận vi phạm, giảm triệt để false positive.
+    """
+
+    def __init__(self, buffer_size=30, stale_timeout=30.0):
+        self.ts_manager = TimeSeriesManager(
+            buffer_size=buffer_size,
+            stale_timeout=stale_timeout
+        )
+        self.behavior_analyzer = BehaviorAnalyzer()
+        self.recent_violations = deque(maxlen=100)
+        
+        # Instant check thresholds (cho những thứ không cần time-series)
+        self.brightness_min = 15.0
+        self.brightness_max = 95.0
+        self.multiple_faces_count = 1
+
+        # Cooldown: tránh spam cùng loại vi phạm cho cùng 1 người
+        # Key: (track_id, violation_type) -> last_alert_time
+        self._cooldowns = {}
+        self.cooldown_seconds = 10.0  # Chờ 10 giây trước khi báo lại cùng loại
+
+    def check_violations(self, tracked_persons, face_count, brightness, objects, timestamp):
+        """
+        Kiểm tra vi phạm kết hợp Time-Series voting + Instant checks.
+        
+        Args:
+            tracked_persons: list[dict] — Danh sách thí sinh đã có pose_landmarks và head_pose
+            face_count: int — Tổng số khuôn mặt phát hiện trong frame
+            brightness: float — Độ sáng frame (%)
+            objects: list[dict] — Tất cả objects detected bởi YOLO
+            timestamp: int — Timestamp (milliseconds)
+            
+        Returns:
+            list[dict]: Danh sách vi phạm, mỗi vi phạm có track_id để biết ai vi phạm.
+        """
+        current_time = timestamp / 1000.0
+        all_violations = []
+        active_track_ids = []
+
+        # --- PHASE 1: Cập nhật Time-Series Buffer cho từng thí sinh ---
+        for person in tracked_persons:
+            track_id = person.get('track_id', -1)
+            if track_id == -1:
+                continue
+            
+            active_track_ids.append(track_id)
+            
+            # Xác định vật thể gần người này (dựa trên bbox overlap)
+            nearby_objects = self._find_nearby_objects(person, objects)
+            
+            # Build frame_data cho buffer
+            frame_data = self._build_frame_data(
+                person=person,
+                nearby_objects=nearby_objects,
+                face_visible=(face_count > 0),
+                timestamp=current_time
+            )
+            
+            self.ts_manager.update(track_id, frame_data)
+        
+        # --- PHASE 2: Phân tích hành vi trên Time-Series cho mỗi thí sinh ---
+        for track_id in active_track_ids:
+            buffer = self.ts_manager.get_buffer(track_id)
+            if buffer is None:
+                continue
+            
+            ts_violations = self.behavior_analyzer.analyze(buffer)
+            
+            for v in ts_violations:
+                v['track_id'] = track_id
+                
+                # Áp dụng cooldown
+                cooldown_key = (track_id, v['type'])
+                last_alert = self._cooldowns.get(cooldown_key, 0)
+                if current_time - last_alert >= self.cooldown_seconds:
+                    all_violations.append(v)
+                    self._cooldowns[cooldown_key] = current_time
+
+        # --- PHASE 3: Instant checks (không cần time-series) ---
+        instant_violations = self._check_instant(face_count, brightness, current_time)
+        all_violations.extend(instant_violations)
+
+        # --- PHASE 4: Cleanup stale buffers ---
+        self.ts_manager.cleanup(active_track_ids)
+
+        # --- Lưu lịch sử ---
+        for v in all_violations:
+            self.recent_violations.append({
+                'timestamp': current_time,
+                'type': v['type'],
+                'track_id': v.get('track_id', -1),
+                'confidence': v.get('confidence', 1.0),
+                'source': v.get('source', 'instant'),
+                'details': v.get('details', {})
+            })
+
+        return all_violations
+
+    def _build_frame_data(self, person, nearby_objects, face_visible, timestamp):
+        """
+        Xây dựng frame_data dict từ tracked_person để lưu vào buffer.
+        Trích xuất key landmarks từ pose_landmarks (33 điểm) của MediaPipe.
+        """
+        head_pose = person.get('head_pose', {'yaw': 0.0, 'pitch': 0.0, 'roll': 0.0})
+        
+        # Trích xuất key landmarks
+        key_landmarks = {}
+        pose_landmarks = person.get('pose_landmarks', [])
+        
+        if pose_landmarks:
+            for name, idx in LANDMARK_INDICES.items():
+                if idx < len(pose_landmarks):
+                    lm = pose_landmarks[idx]
+                    key_landmarks[name] = (
+                        lm.get('x', 0.0),
+                        lm.get('y', 0.0)
+                    )
+                else:
+                    key_landmarks[name] = (0.0, 0.0)
+        
+        # Danh sách tên vật thể gần người này
+        objects_nearby = [obj['class_name'] for obj in nearby_objects]
+        
+        return {
+            'timestamp': timestamp,
+            'head_pose': head_pose,
+            'key_landmarks': key_landmarks,
+            'objects_nearby': objects_nearby,
+            'face_visible': face_visible,
+        }
+
+    def _find_nearby_objects(self, person, all_objects):
+        """
+        Tìm vật thể (phone, book) gần một thí sinh dựa trên bbox overlap.
+        Một vật thể được coi là "gần" nếu tâm của nó nằm trong hoặc gần bbox của person.
+        """
+        px, py, pw, ph = person['bbox']
+        # Mở rộng bbox thêm 30% mỗi chiều để catch objects ở rìa
+        margin_x = int(pw * 0.3)
+        margin_y = int(ph * 0.3)
+        expanded = (
+            px - margin_x,
+            py - margin_y,
+            px + pw + margin_x,
+            py + ph + margin_y
+        )
+        
+        nearby = []
+        for obj in all_objects:
+            if obj['class_name'] == 'person':
+                continue  # Bỏ qua person, chỉ quan tâm vật thể
+            
+            ox, oy = obj['center']
+            if expanded[0] <= ox <= expanded[2] and expanded[1] <= oy <= expanded[3]:
+                nearby.append(obj)
+        
+        return nearby
+
+    def _check_instant(self, face_count, brightness, current_time):
+        """
+        Kiểm tra vi phạm tức thì (không cần lịch sử frames).
+        - Nhiều khuôn mặt
+        - Brightness bất thường
+        """
+        violations = []
+        
+        if face_count > self.multiple_faces_count:
+            violations.append({
+                'type': 'multiple_faces',
+                'confidence': 1.0,
+                'threshold': self.multiple_faces_count,
+                'source': 'instant',
+                'window_size': 1,
+                'details': {
+                    'face_count': face_count,
+                    'description': f'Phát hiện {face_count} khuôn mặt (giới hạn: {self.multiple_faces_count})'
+                }
+            })
+        
+        if brightness < self.brightness_min:
+            violations.append({
+                'type': 'camera_blocked',
+                'confidence': 1.0,
+                'threshold': self.brightness_min,
+                'source': 'instant',
+                'window_size': 1,
+                'details': {
+                    'brightness': round(brightness, 2),
+                    'reason': 'too_dark',
+                    'description': f'Camera quá tối ({brightness:.1f}%)'
+                }
+            })
+        elif brightness > self.brightness_max:
+            violations.append({
+                'type': 'camera_blocked',
+                'confidence': 1.0,
+                'threshold': self.brightness_max,
+                'source': 'instant',
+                'window_size': 1,
+                'details': {
+                    'brightness': round(brightness, 2),
+                    'reason': 'too_bright',
+                    'description': f'Camera quá sáng ({brightness:.1f}%)'
+                }
+            })
+        
+        return violations
+
+    def get_buffer_stats(self):
+        """Trả về thống kê buffer cho API/UI debug."""
+        return self.ts_manager.get_stats()
+
+    def get_config(self):
+        """Trả về toàn bộ cấu hình hiện tại."""
+        return {
+            'buffer_size': self.ts_manager.buffer_size,
+            'stale_timeout': self.ts_manager.stale_timeout,
+            'cooldown_seconds': self.cooldown_seconds,
+            'brightness_min': self.brightness_min,
+            'brightness_max': self.brightness_max,
+            'multiple_faces_count': self.multiple_faces_count,
+            'behavior_analyzer': self.behavior_analyzer.get_config(),
+        }
+
+    def reset(self):
+        """Reset toàn bộ trạng thái."""
+        self.ts_manager = TimeSeriesManager(
+            buffer_size=self.ts_manager.buffer_size,
+            stale_timeout=self.ts_manager.stale_timeout
+        )
+        self.recent_violations.clear()
+        self._cooldowns.clear()

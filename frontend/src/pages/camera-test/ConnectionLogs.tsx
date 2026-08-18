@@ -39,12 +39,11 @@ export const ConnectionLogs: React.FC<ConnectionLogsProps> = ({ logs, onClear })
           logs.map(log => (
             <div
               key={log.id}
-              className={`p-2.5 rounded-lg border leading-relaxed ${
-                log.type === 'success' ? 'bg-emerald-950/20 border-emerald-500/20 text-emerald-400' :
-                log.type === 'warning' ? 'bg-amber-950/20 border-amber-500/20 text-amber-400' :
-                log.type === 'error' ? 'bg-red-950/20 border-red-500/20 text-red-400' :
-                'bg-slate-900/40 border-slate-850 text-slate-300'
-              }`}
+              className={`p-2.5 rounded-lg border leading-relaxed ${log.type === 'success' ? 'bg-emerald-950/20 border-emerald-500/20 text-emerald-400' :
+                  log.type === 'warning' ? 'bg-amber-950/20 border-amber-500/20 text-amber-400' :
+                    log.type === 'error' ? 'bg-red-950/20 border-red-500/20 text-red-400' :
+                      'bg-slate-900/40 border-slate-850 text-slate-300'
+                }`}
             >
               <div className="flex items-center justify-between font-bold mb-0.5">
                 <span>[{log.type.toUpperCase()}]</span>
