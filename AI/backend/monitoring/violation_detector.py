@@ -228,7 +228,7 @@ class ViolationDetectorV2:
 
 
 
-    def check_violations(self, tracked_persons, face_count, brightness, objects, timestamp):
+    def check_violations(self, tracked_persons, face_count, brightness, objects, timestamp, offline_mode=None):
         """
         Kiểm tra vi phạm kết hợp Time-Series voting + Instant checks.
         
@@ -242,6 +242,9 @@ class ViolationDetectorV2:
         Returns:
             list[dict]: Danh sách vi phạm, mỗi vi phạm có track_id để biết ai vi phạm.
         """
+        if offline_mode is not None:
+            self.behavior_analyzer.offline_mode = offline_mode
+
         current_time = timestamp / 1000.0
         all_violations = []
         active_track_ids = []

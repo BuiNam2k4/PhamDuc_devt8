@@ -27,12 +27,16 @@ logger = logging.getLogger('ai-server')
 EVIDENCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "evidence")
 os.makedirs(EVIDENCE_DIR, exist_ok=True)
 
+# Cấu hình chế độ giám sát từ môi trường: True = Offline, False = Online (mặc định)
+OFFLINE_MODE = os.getenv("OFFLINE_MODE", "false").lower() in ("true", "1", "yes")
+
 # Global components
 face_detector = FaceDetectorWrapper()
 head_pose_estimator = HeadPoseEstimator()
 object_detector = ObjectDetector()
 violation_detector_legacy = ViolationDetector()  # Giữ lại cho backward compat
 violation_detector = ViolationDetectorV2(buffer_size=30, stale_timeout=30.0)
+violation_detector.behavior_analyzer.offline_mode = OFFLINE_MODE
 pose_detector = PoseDetectorWrapper()
 spring_boot_client = SpringBootClient()
 
@@ -227,7 +231,8 @@ async def process_frame(frame_data: str, timestamp: int):
             face_count=face_count,
             brightness=brightness,
             objects=objects,
-            timestamp=timestamp
+            timestamp=timestamp,
+            offline_mode=OFFLINE_MODE
         )
         
         # Lấy thống kê buffer để gửi về frontend (debug/monitoring)
