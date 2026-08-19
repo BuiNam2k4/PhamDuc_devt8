@@ -22,6 +22,9 @@ class BehaviorAnalyzer:
     """
 
     def __init__(self):
+        # Chế độ hoạt động: True = Offline (giám sát phòng thi), False = Online (webcam cá nhân)
+        self.offline_mode = False
+
         # Ngưỡng voting cho từng loại vi phạm
         # Key: loại vi phạm
         # Value: (threshold_ratio, min_condition_description)
@@ -30,11 +33,13 @@ class BehaviorAnalyzer:
             'looking_away': 0.70,    # ≥ 70% frames quay đầu → vi phạm
             'cheat_sheet': 0.50,     # ≥ 50% frames có sách → vi phạm
             'face_missing': 0.80,    # ≥ 80% frames không thấy mặt → vi phạm
+            'turning_around': 0.50,  # ≥ 50% frames quay người ra sau (offline) → vi phạm
         }
 
         # Ngưỡng góc quay đầu (degrees)
-        self.head_yaw_threshold = 25.0
-        self.head_pitch_threshold = 20.0
+        self.head_yaw_threshold = 30.0         # Xoay trái/phải tối đa 30 độ
+        self.head_pitch_up_threshold = 25.0     # Ngước lên tối đa 25 độ
+        self.head_pitch_down_threshold = 35.0   # Cúi xuống tối đa 35 độ (tránh false positive khi đọc đề)
 
         # Ngưỡng tốc độ thay đổi góc đáng ngờ (degrees/frame)
         self.angular_velocity_threshold = 15.0
@@ -69,17 +74,24 @@ class BehaviorAnalyzer:
         if result:
             violations.append(result)
 
-        result = self._vote_looking_away(window)
-        if result:
-            violations.append(result)
+        if not self.offline_mode:
+            # Chế độ Online: Kiểm tra quay đầu bằng Face Mesh
+            result = self._vote_looking_away(window)
+            if result:
+                violations.append(result)
+        else:
+            # Chế độ Offline: Kiểm tra quay người ra sau bằng Pose landmarks
+            result = self._vote_turning_around(window)
+            if result:
+                violations.append(result)
 
         result = self._vote_cheat_sheet(window)
         if result:
             violations.append(result)
 
-        result = self._vote_face_missing(window)
-        if result:
-            violations.append(result)
+        # result = self._vote_face_missing(window)
+        # if result:
+        #     violations.append(result)
 
         return violations
 
@@ -133,7 +145,8 @@ class BehaviorAnalyzer:
 
             is_away = (
                 abs(yaw) > self.head_yaw_threshold or
-                abs(pitch) > self.head_pitch_threshold
+                pitch > self.head_pitch_up_threshold or
+                pitch < -self.head_pitch_down_threshold
             )
             if is_away:
                 count += 1
@@ -143,11 +156,10 @@ class BehaviorAnalyzer:
                         dominant_direction['left'] += 1
                     else:
                         dominant_direction['right'] += 1
-                if abs(pitch) > self.head_pitch_threshold:
-                    if pitch < 0:
-                        dominant_direction['down'] += 1
-                    else:
-                        dominant_direction['up'] += 1
+                if pitch > self.head_pitch_up_threshold:
+                    dominant_direction['up'] += 1
+                elif pitch < -self.head_pitch_down_threshold:
+                    dominant_direction['down'] += 1
 
         ratio = count / total
         threshold = self.voting_thresholds['looking_away']
@@ -262,9 +274,63 @@ class BehaviorAnalyzer:
 
         return sum(velocities) / len(velocities) if velocities else 0.0
 
+    def _vote_turning_around(self, window):
+        """
+        Voting: Phát hiện quay người ra sau / quay nghiêng người góc lớn bằng Pose.
+        """
+        total = len(window)
+        if total == 0:
+            return None
+
+        count = 0
+        for frame in window:
+            kl = frame.get('key_landmarks', {})
+            l_shoulder = kl.get('left_shoulder', (0.0, 0.0))
+            r_shoulder = kl.get('right_shoulder', (0.0, 0.0))
+            l_hip = kl.get('left_hip', (0.0, 0.0))
+            r_hip = kl.get('right_hip', (0.0, 0.0))
+
+            if (l_shoulder != (0.0, 0.0) and r_shoulder != (0.0, 0.0) and 
+                l_hip != (0.0, 0.0) and r_hip != (0.0, 0.0)):
+                
+                # 1. Quay lưng hẳn lại: X của vai trái < X của vai phải
+                is_back_to_camera = l_shoulder[0] < r_shoulder[0]
+
+                # 2. Quay nghiêng người góc lớn:
+                # Chiều ngang vai:
+                shoulder_width = abs(l_shoulder[0] - r_shoulder[0])
+                # Chiều dọc thân:
+                torso_height = abs((l_shoulder[1] + r_shoulder[1])/2 - (l_hip[1] + r_hip[1])/2)
+                
+                is_sideways = False
+                if torso_height > 0.01:
+                     is_sideways = (shoulder_width / torso_height) < 0.35
+
+                if is_back_to_camera or is_sideways:
+                    count += 1
+
+        ratio = count / total
+        threshold = self.voting_thresholds['turning_around']
+
+        if ratio >= threshold:
+            return {
+                'type': 'turning_around',
+                'confidence': round(ratio, 3),
+                'threshold': threshold,
+                'source': 'time_series',
+                'window_size': total,
+                'details': {
+                    'frames_turning_around': count,
+                    'total_frames': total,
+                    'description': f'Quay người ra sau trong {count}/{total} frames ({ratio*100:.0f}%)'
+                }
+            }
+        return None
+
     def get_config(self):
         """Trả về cấu hình hiện tại của analyzer (để hiển thị trên UI debug)."""
         return {
+            'offline_mode': self.offline_mode,
             'voting_thresholds': self.voting_thresholds,
             'head_yaw_threshold': self.head_yaw_threshold,
             'head_pitch_threshold': self.head_pitch_threshold,

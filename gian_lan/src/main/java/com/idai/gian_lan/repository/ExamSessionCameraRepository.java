@@ -6,4 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ExamSessionCameraRepository extends JpaRepository<ExamSessionCamera, String> {
+    void deleteByExamSession_Id(String examSessionId);
 }
+
