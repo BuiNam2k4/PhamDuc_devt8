@@ -17,6 +17,8 @@ import com.idai.gian_lan.mapper.ExamSessionMapper;
 import com.idai.gian_lan.repository.ExamSessionDetailRepository;
 import com.idai.gian_lan.repository.ExamSessionRepository;
 import com.idai.gian_lan.repository.RoomRepository;
+import com.idai.gian_lan.entity.ExamSessionCamera;
+import com.idai.gian_lan.repository.ExamSessionCameraRepository;
 import com.idai.gian_lan.repository.StudentRepository;
 import com.idai.gian_lan.repository.SubjectRepository;
 import com.idai.gian_lan.repository.ModelRepository;
@@ -38,6 +40,7 @@ public class ExamSessionServiceImpl implements ExamSessionService {
 
     ExamSessionRepository examSessionRepository;
     ExamSessionDetailRepository examSessionDetailRepository;
+    ExamSessionCameraRepository examSessionCameraRepository;
     RoomRepository roomRepository;
     SubjectRepository subjectRepository;
     StudentRepository studentRepository;
@@ -94,6 +97,15 @@ public class ExamSessionServiceImpl implements ExamSessionService {
         examSession.setExamSessionDetails(details);
 
         ExamSession savedSession = examSessionRepository.save(examSession);
+
+        if (savedSession.getMode() == ExamMode.ONLINE) {
+            ExamSessionCamera sessionCamera = ExamSessionCamera.builder()
+                    .examSession(savedSession)
+                    .camera(null)
+                    .build();
+            examSessionCameraRepository.save(sessionCamera);
+        }
+
         return examSessionMapper.toExamSessionResponse(savedSession);
     }
 
@@ -152,6 +164,7 @@ public class ExamSessionServiceImpl implements ExamSessionService {
     public void deleteExamSession(String id) {
         ExamSession examSession = examSessionRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.EXAM_SESSION_NOT_EXISTED));
+        examSessionCameraRepository.deleteByExamSession_Id(id);
         examSessionRepository.delete(examSession);
     }
 

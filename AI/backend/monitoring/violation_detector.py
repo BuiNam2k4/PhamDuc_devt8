@@ -34,14 +34,14 @@ class ViolationDetector:
         violations = []
         
         # 1. Kiểm tra nhiều khuôn mặt
-        violation = self._check_multiple_faces(face_count, current_time)
-        if violation:
-            violations.append(violation)
+        # violation = self._check_multiple_faces(face_count, current_time)
+        # if violation:
+        #     violations.append(violation)
         
         # 2. Kiểm tra mất khuôn mặt
-        violation = self._check_face_missing(face_count, current_time)
-        if violation:
-            violations.append(violation)
+        # violation = self._check_face_missing(face_count, current_time)
+        # if violation:
+        #     violations.append(violation)
         
         # 3. Kiểm tra quay đầu/nhìn chỗ khác
         violation = self._check_head_pose(head_yaw, head_pitch, current_time)
@@ -162,14 +162,14 @@ class ViolationDetector:
                 }
             })
         
-        if len(extra_persons) > 1:
-            violations.append({
-                'type': 'multiple_faces',
-                'details': {
-                    'person_count': len(extra_persons),
-                    'detected_by': 'object_detection'
-                }
-            })
+        # if len(extra_persons) > 1:
+        #     violations.append({
+        #         'type': 'multiple_faces',
+        #         'details': {
+        #             'person_count': len(extra_persons),
+        #             'detected_by': 'object_detection'
+        #         }
+        #     })
         
         if books:
             violations.append({
@@ -226,12 +226,9 @@ class ViolationDetectorV2:
         self.brightness_max = 95.0
         self.multiple_faces_count = 1
 
-        # Cooldown: tránh spam cùng loại vi phạm cho cùng 1 người
-        # Key: (track_id, violation_type) -> last_alert_time
-        self._cooldowns = {}
-        self.cooldown_seconds = 10.0  # Chờ 10 giây trước khi báo lại cùng loại
 
-    def check_violations(self, tracked_persons, face_count, brightness, objects, timestamp):
+
+    def check_violations(self, tracked_persons, face_count, brightness, objects, timestamp, offline_mode=None):
         """
         Kiểm tra vi phạm kết hợp Time-Series voting + Instant checks.
         
@@ -245,6 +242,9 @@ class ViolationDetectorV2:
         Returns:
             list[dict]: Danh sách vi phạm, mỗi vi phạm có track_id để biết ai vi phạm.
         """
+        if offline_mode is not None:
+            self.behavior_analyzer.offline_mode = offline_mode
+
         current_time = timestamp / 1000.0
         all_violations = []
         active_track_ids = []
@@ -280,13 +280,7 @@ class ViolationDetectorV2:
             
             for v in ts_violations:
                 v['track_id'] = track_id
-                
-                # Áp dụng cooldown
-                cooldown_key = (track_id, v['type'])
-                last_alert = self._cooldowns.get(cooldown_key, 0)
-                if current_time - last_alert >= self.cooldown_seconds:
-                    all_violations.append(v)
-                    self._cooldowns[cooldown_key] = current_time
+                all_violations.append(v)
 
         # --- PHASE 3: Instant checks (không cần time-series) ---
         instant_violations = self._check_instant(face_count, brightness, current_time)
@@ -347,9 +341,9 @@ class ViolationDetectorV2:
         Một vật thể được coi là "gần" nếu tâm của nó nằm trong hoặc gần bbox của person.
         """
         px, py, pw, ph = person['bbox']
-        # Mở rộng bbox thêm 30% mỗi chiều để catch objects ở rìa
-        margin_x = int(pw * 0.3)
-        margin_y = int(ph * 0.3)
+        # Mở rộng bbox thêm 100% mỗi chiều để catch objects ở rìa (tay cầm điện thoại/sách)
+        margin_x = int(pw * 1.0)
+        margin_y = int(ph * 1.0)
         expanded = (
             px - margin_x,
             py - margin_y,
@@ -376,18 +370,18 @@ class ViolationDetectorV2:
         """
         violations = []
         
-        if face_count > self.multiple_faces_count:
-            violations.append({
-                'type': 'multiple_faces',
-                'confidence': 1.0,
-                'threshold': self.multiple_faces_count,
-                'source': 'instant',
-                'window_size': 1,
-                'details': {
-                    'face_count': face_count,
-                    'description': f'Phát hiện {face_count} khuôn mặt (giới hạn: {self.multiple_faces_count})'
-                }
-            })
+        # if face_count > self.multiple_faces_count:
+        #     violations.append({
+        #         'type': 'multiple_faces',
+        #         'confidence': 1.0,
+        #         'threshold': self.multiple_faces_count,
+        #         'source': 'instant',
+        #         'window_size': 1,
+        #         'details': {
+        #             'face_count': face_count,
+        #             'description': f'Phát hiện {face_count} khuôn mặt (giới hạn: {self.multiple_faces_count})'
+        #         }
+        #     })
         
         if brightness < self.brightness_min:
             violations.append({
@@ -427,7 +421,6 @@ class ViolationDetectorV2:
         return {
             'buffer_size': self.ts_manager.buffer_size,
             'stale_timeout': self.ts_manager.stale_timeout,
-            'cooldown_seconds': self.cooldown_seconds,
             'brightness_min': self.brightness_min,
             'brightness_max': self.brightness_max,
             'multiple_faces_count': self.multiple_faces_count,
@@ -441,4 +434,3 @@ class ViolationDetectorV2:
             stale_timeout=self.ts_manager.stale_timeout
         )
         self.recent_violations.clear()
-        self._cooldowns.clear()

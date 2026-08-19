@@ -79,6 +79,26 @@ const cameraFeeds: CameraFeed[] = [
   },
 ];
 
+const VIOLATION_TRANSLATIONS: Record<string, string> = {
+  'PHONE_DETECTED': 'Sử dụng điện thoại',
+  'LOOK_AWAY': 'Quay đầu / Nhìn chỗ khác',
+  'MULTIPLE_FACES': 'Nhiều khuôn mặt',
+  'FACE_NOT_DETECTED': 'Không phát hiện khuôn mặt',
+  'USING_DOCUMENT': 'Sử dụng tài liệu',
+  'HEAD_POSE_ABNORMAL': 'Tư thế đầu bất thường',
+  'phone_usage': 'Sử dụng điện thoại',
+  'phone_detected': 'Sử dụng điện thoại',
+  'looking_away': 'Quay đầu / Nhìn chỗ khác',
+  'look_away': 'Quay đầu / Nhìn chỗ khác',
+  'turning_around': 'Quay người ra sau / Quay lưng',
+  'multiple_faces': 'Nhiều khuôn mặt',
+  'face_missing': 'Không phát hiện khuôn mặt',
+  'face_not_detected': 'Không phát hiện khuôn mặt',
+  'cheat_sheet': 'Sử dụng tài liệu',
+  'suspicious_object': 'Phát hiện vật thể lạ',
+  'camera_blocked': 'Camera bị che khuất',
+};
+
 export default function RealtimeMonitoringPage() {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [selectedCam, setSelectedCam] = useState<string | null>(null);
@@ -92,12 +112,16 @@ export default function RealtimeMonitoringPage() {
   // Combine WebSocket real-time incoming violations with simulated live feed fallback
   useEffect(() => {
     if (violations && violations.length > 0) {
-      const newest = violations[0];
+      const newest = violations[0] as any;
+      const rawType = newest.violationType || newest.violation_type || '';
+      const translatedType = VIOLATION_TRANSLATIONS[rawType] || rawType || 'Nghi vấn gian lận';
+      const confidence = newest.confidence ?? newest.violation_confidence ?? 0.9;
+
       const newLogItem: LiveLogItem = {
         id: Date.now(),
         cam: 'CAM-01',
         student: 'Thí sinh phát hiện mới (Realtime WS)',
-        type: `${newest.violationType || 'Nghi vấn gian lận'} (${Math.round((newest.confidence || 0.9) * 100)}%)`,
+        type: `${translatedType} (${Math.round(confidence * 100)}%)`,
         time: new Date().toLocaleTimeString(),
         severity: 'HIGH',
       };

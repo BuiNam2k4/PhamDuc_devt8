@@ -241,6 +241,8 @@ export function useCameraTest() {
               detailsStr = `Tìm thấy ${res.details?.phone_count || 1} điện thoại`;
             } else if (res.violation_type === 'look_away') {
               detailsStr = `Quay đầu hướng ${res.details?.direction || 'lạ'} trong ${res.details?.duration || 0}s`;
+            } else if (res.violation_type === 'turning_around') {
+              detailsStr = `Quay người ra sau trong ${res.details?.frames_turning_around || 0}/${res.details?.total_frames || 30} frames`;
             } else if (res.violation_type === 'multiple_faces') {
               detailsStr = `Phát hiện ${res.details?.face_count || res.details?.person_count || 2} khuôn mặt/người`;
             } else if (res.violation_type === 'face_not_detected') {
@@ -346,6 +348,7 @@ export function useCameraTest() {
       case 'multiple_faces': return 'Nhiều khuôn mặt';
       case 'face_not_detected': return 'Không phát hiện khuôn mặt';
       case 'look_away': return 'Quay đầu / Nhìn đi chỗ khác';
+      case 'turning_around': return 'Quay người ra sau / Quay lưng';
       case 'camera_blocked': return 'Camera bị che khuất / Ánh sáng kém';
       case 'suspicious_object': return 'Phát hiện vật thể nghi vấn';
       default: return type;
