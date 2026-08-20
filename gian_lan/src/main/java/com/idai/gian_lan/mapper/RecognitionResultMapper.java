@@ -13,12 +13,17 @@ public interface RecognitionResultMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "model", ignore = true)
     @Mapping(target = "examSessionCamera", ignore = true)
+    @Mapping(target = "examSession", ignore = true)
+    @Mapping(target = "student", ignore = true)
     @Mapping(target = "violationType", expression = "java(mapStringToViolationType(request.getViolationType()))")
     RecognitionResult toRecognitionResult(RecognitionResultCreationRequest request);
 
     @Mapping(target = "modelId", source = "model.id")
     @Mapping(target = "modelName", source = "model.name")
+    @Mapping(target = "studentUsername", source = "student.username")
+    @Mapping(target = "studentFullName", source = "student.fullName")
     @Mapping(target = "examSessionCameraId", source = "examSessionCamera.id")
+    @Mapping(target = "examSessionId", source = "examSession.id")
     RecognitionResultResponse toRecognitionResultResponse(RecognitionResult recognitionResult);
 
     default ViolationType mapStringToViolationType(String violationTypeStr) {

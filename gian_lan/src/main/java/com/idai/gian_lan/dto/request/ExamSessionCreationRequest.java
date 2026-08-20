@@ -35,4 +35,6 @@ public class ExamSessionCreationRequest {
     String modelId;
 
     List<String> studentIds;
+
+    List<String> cameraIds;
 }

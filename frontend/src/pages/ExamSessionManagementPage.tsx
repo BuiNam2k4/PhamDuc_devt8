@@ -21,7 +21,8 @@ import { roomService } from '../services/roomService';
 import { subjectService } from '../services/subjectService';
 import { studentService } from '../services/studentService';
 import { modelService } from '../services/modelService';
-import { ExamSession, Room, Subject, Student, ExamMode, Model } from '../types';
+import { cameraService } from '../services/cameraService';
+import { ExamSession, Room, Subject, Student, ExamMode, Model, Camera } from '../types';
 
 export default function ExamSessionManagementPage() {
   const [sessions, setSessions] = useState<ExamSession[]>([]);
@@ -29,6 +30,7 @@ export default function ExamSessionManagementPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [models, setModels] = useState<Model[]>([]);
+  const [cameras, setCameras] = useState<Camera[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,22 +49,25 @@ export default function ExamSessionManagementPage() {
   const [subjectId, setSubjectId] = useState('');
   const [modelId, setModelId] = useState('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [selectedCameraIds, setSelectedCameraIds] = useState<string[]>([]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [sessionsData, roomsData, subjectsData, studentsData, modelsData] = await Promise.all([
+      const [sessionsData, roomsData, subjectsData, studentsData, modelsData, camerasData] = await Promise.all([
         examSessionService.getAll(),
         roomService.getAll(),
         subjectService.getAll(),
         studentService.getAll(),
-        modelService.getAll()
+        modelService.getAll(),
+        cameraService.getAll()
       ]);
       setSessions(sessionsData || []);
       setRooms(roomsData || []);
       setSubjects(subjectsData || []);
       setStudents(studentsData || []);
       setModels(modelsData || []);
+      setCameras(camerasData || []);
       setError(null);
     } catch (err: any) {
       setError(err.message || 'Không thể tải dữ liệu ca thi');
@@ -83,6 +88,7 @@ export default function ExamSessionManagementPage() {
     setSubjectId(subjects[0]?.id || '');
     setModelId(models.find(m => m.status === 'ACTIVE')?.id || models[0]?.id || '');
     setSelectedStudentIds([]);
+    setSelectedCameraIds([]);
     setIsCreateModalOpen(true);
   };
 
@@ -98,6 +104,11 @@ export default function ExamSessionManagementPage() {
     // Load student IDs currently assigned to this session
     const currentStudentIds = session.examSessionDetails?.map(detail => detail.student?.id).filter(Boolean) as string[] || [];
     setSelectedStudentIds(currentStudentIds);
+
+    // Load camera IDs currently assigned to this session
+    const currentCameraIds = session.examSessionCameras?.map(esc => esc.camera?.id).filter(Boolean) as string[] || [];
+    setSelectedCameraIds(currentCameraIds);
+
     setIsEditModalOpen(true);
   };
 
@@ -111,7 +122,8 @@ export default function ExamSessionManagementPage() {
         roomId: mode === ExamMode.ONLINE ? undefined : roomId,
         subjectId,
         modelId: modelId || undefined,
-        studentIds: selectedStudentIds
+        studentIds: selectedStudentIds,
+        cameraIds: mode === ExamMode.ONLINE ? undefined : selectedCameraIds
       });
       setIsCreateModalOpen(false);
       loadData();
@@ -130,7 +142,8 @@ export default function ExamSessionManagementPage() {
         mode,
         roomId: mode === ExamMode.ONLINE ? undefined : roomId,
         subjectId,
-        modelId: modelId || undefined
+        modelId: modelId || undefined,
+        cameraIds: mode === ExamMode.ONLINE ? undefined : selectedCameraIds
       });
       
       // Update assigned students if list changed
@@ -162,6 +175,14 @@ export default function ExamSessionManagementPage() {
       prev.includes(studentId) 
         ? prev.filter(id => id !== studentId) 
         : [...prev, studentId]
+    );
+  };
+
+  const handleToggleCameraSelection = (cameraId: string) => {
+    setSelectedCameraIds(prev => 
+      prev.includes(cameraId) 
+        ? prev.filter(id => id !== cameraId) 
+        : [...prev, cameraId]
     );
   };
 
@@ -465,6 +486,37 @@ export default function ExamSessionManagementPage() {
                 </div>
               </div>
 
+              {/* Camera Assignment List (Only for OFFLINE mode) */}
+              {mode === ExamMode.OFFLINE && (
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-slate-400 block">Chọn Camera Giám Sát Phòng</label>
+                  {cameras.length === 0 ? (
+                    <div className="text-[11px] text-slate-500 italic p-2 bg-slate-900/50 rounded-lg border border-slate-800">
+                      Chưa có camera nào trong hệ thống.
+                    </div>
+                  ) : (
+                    <div className="border border-slate-800 rounded-lg bg-slate-950 p-3 max-h-36 overflow-y-auto space-y-2">
+                      {cameras.map(camera => (
+                        <label key={camera.id} className="flex items-center justify-between text-xs text-slate-300 hover:bg-slate-900 p-1.5 rounded cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedCameraIds.includes(camera.id)}
+                              onChange={() => handleToggleCameraSelection(camera.id)}
+                              className="accent-indigo-500"
+                            />
+                            <span className="font-semibold text-slate-200">{camera.name}</span>
+                          </div>
+                          <span className="font-mono text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded">
+                            {camera.cameraCode} | IP: {camera.ipAddress || 'N/A'} | {camera.location || 'N/A'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
@@ -624,6 +676,37 @@ export default function ExamSessionManagementPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Camera Assignment List (Only for OFFLINE mode) */}
+              {mode === ExamMode.OFFLINE && (
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-slate-400 block">Chọn Camera Giám Sát Phòng</label>
+                  {cameras.length === 0 ? (
+                    <div className="text-[11px] text-slate-500 italic p-2 bg-slate-900/50 rounded-lg border border-slate-800">
+                      Chưa có camera nào trong hệ thống.
+                    </div>
+                  ) : (
+                    <div className="border border-slate-800 rounded-lg bg-slate-950 p-3 max-h-36 overflow-y-auto space-y-2">
+                      {cameras.map(camera => (
+                        <label key={camera.id} className="flex items-center justify-between text-xs text-slate-300 hover:bg-slate-900 p-1.5 rounded cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedCameraIds.includes(camera.id)}
+                              onChange={() => handleToggleCameraSelection(camera.id)}
+                              className="accent-indigo-500"
+                            />
+                            <span className="font-semibold text-slate-200">{camera.name}</span>
+                          </div>
+                          <span className="font-mono text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded">
+                            {camera.cameraCode} | IP: {camera.ipAddress || 'N/A'} | {camera.location || 'N/A'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-2">
                 <button

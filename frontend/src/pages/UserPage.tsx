@@ -10,7 +10,8 @@ import {
   Info,
   CheckCircle,
   AlertTriangle,
-  Clock
+  Clock,
+  BookOpen
 } from 'lucide-react';
 import { authService, examSessionService } from '../services';
 import { UserResponse, ExamSession } from '../types';
@@ -35,6 +36,39 @@ const formatExamTime = (startTimeStr?: string, duration?: number) => {
   }
 };
 
+const MOCK_QUESTIONS = [
+  {
+    id: 1,
+    question: "Ngôn ngữ lập trình nào sau đây được sử dụng phổ biến nhất trong phát triển các ứng dụng AI và Thị giác máy tính?",
+    options: ["Java", "C++", "Python", "JavaScript"]
+  },
+  {
+    id: 2,
+    question: "Framework nào trong hệ sinh thái Java hỗ trợ xây dựng các dịch vụ RESTful API nhanh chóng, bảo mật và khép kín?",
+    options: ["Spring Boot", "Struts", "Hibernate", "Grails"]
+  },
+  {
+    id: 3,
+    question: "Trong thuật toán ByteTrack, nhiệm vụ chính của mô hình tracking là gì?",
+    options: [
+      "Nhận diện đối tượng khuôn mặt",
+      "Gán ID ổn định cho đối tượng di chuyển qua các frame hình ảnh",
+      "Phát hiện tư thế xương khớp 3D",
+      "Phân loại các hành vi gian lận bằng mạng học sâu"
+    ]
+  },
+  {
+    id: 4,
+    question: "Giao thức truyền dữ liệu nào được sử dụng để stream camera thời gian thực từ thí sinh lên AI Engine?",
+    options: ["HTTP/REST", "gRPC", "WebSocket", "FTP"]
+  },
+  {
+    id: 5,
+    question: "Độ trễ đầu-cuối (End-to-End Latency) tối ưu của hệ thống giám sát AI proctoring cần đảm bảo là bao nhiêu?",
+    options: ["Dưới 1 giây", "Dưới 5 giây", "Dưới 10 giây", "Không giới hạn"]
+  }
+];
+
 export default function UserPage() {
   const [currentUser, setCurrentUser] = useState<UserResponse | null>(null);
   const [sessions, setSessions] = useState<ExamSession[]>([]);
@@ -45,6 +79,20 @@ export default function UserPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const navigate = useNavigate();
+
+  // Exam Room State
+  const [examJoined, setExamJoined] = useState(false);
+  const [activeExamSession, setActiveExamSession] = useState<ExamSession | null>(null);
+  const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
+  // Mock quiz answers
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  
+  // Refs
+  const examVideoRef = useRef<HTMLVideoElement>(null);
+  const examStreamRef = useRef<MediaStream | null>(null);
+  const examWsRef = useRef<WebSocket | null>(null);
+  const examSendLoopRef = useRef<any>(null);
+  const examCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -66,6 +114,10 @@ export default function UserPage() {
 
     return () => {
       stopCamera();
+      // Cleanup exam if active
+      if (examSendLoopRef.current) clearInterval(examSendLoopRef.current);
+      if (examWsRef.current) examWsRef.current.close();
+      if (examStreamRef.current) examStreamRef.current.getTracks().forEach(track => track.stop());
     };
   }, []);
 
@@ -112,6 +164,252 @@ export default function UserPage() {
       navigate('/login');
     }
   };
+
+  const handleJoinExam = async (session: ExamSession) => {
+    if (session.mode === 'OFFLINE') {
+      alert('Đây là ca thi offline. Bạn cần làm bài trực tiếp tại phòng thi.');
+      return;
+    }
+    // Stop any active camera test first
+    stopCamera();
+    
+    setActiveExamSession(session);
+    setExamJoined(true);
+    setAnswers({});
+    setWsStatus('connecting');
+    
+    // Start camera for the exam
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480, facingMode: 'user' }
+      });
+      examStreamRef.current = stream;
+      
+      setTimeout(() => {
+        if (examVideoRef.current) {
+          examVideoRef.current.srcObject = stream;
+        }
+      }, 200);
+      
+      // Connect to WebSocket
+      const sessionCameraId = session.examSessionCameraId || session.id || 'sandbox-test';
+      const studentUsername = currentUser?.username || 'unknown';
+      const wsUrl = `ws://localhost:8000/ws/${sessionCameraId}_${studentUsername}`;
+      console.log('Connecting to Exam AI WebSocket:', wsUrl);
+      
+      const ws = new WebSocket(wsUrl);
+      examWsRef.current = ws;
+      
+      ws.onopen = () => {
+        setWsStatus('connected');
+        console.log('Exam WS Connected.');
+      };
+      
+      ws.onmessage = (event) => {
+        // Silent proctoring mode: student page receives no incoming telemetry messages
+      };
+      
+      ws.onclose = () => {
+        setWsStatus('disconnected');
+        console.log('Exam WS Closed.');
+      };
+      
+      ws.onerror = (err) => {
+        console.error('Exam WS Error:', err);
+      };
+      
+      // Start loop to capture and send frames at 10 FPS
+      const intervalMs = Math.round(1000 / 10);
+      examSendLoopRef.current = setInterval(() => {
+        const video = examVideoRef.current;
+        const canvas = examCanvasRef.current;
+        const activeWs = examWsRef.current;
+        
+        if (!video || !canvas || !activeWs || activeWs.readyState !== WebSocket.OPEN) return;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const base64Data = canvas.toDataURL('image/jpeg', 0.6);
+        
+        const payload = {
+          type: 'frame',
+          data: base64Data,
+          timestamp: Date.now()
+        };
+        
+        activeWs.send(JSON.stringify(payload));
+      }, intervalMs);
+      
+    } catch (err) {
+      console.error('Failed to start camera or WS for exam:', err);
+      alert('Không thể khởi chạy camera giám sát. Vui lòng cấp quyền và thử lại.');
+      handleExitExam();
+    }
+  };
+
+  const handleExitExam = () => {
+    if (examSendLoopRef.current) {
+      clearInterval(examSendLoopRef.current);
+      examSendLoopRef.current = null;
+    }
+    
+    if (examWsRef.current) {
+      examWsRef.current.close();
+      examWsRef.current = null;
+    }
+    
+    if (examStreamRef.current) {
+      examStreamRef.current.getTracks().forEach(track => track.stop());
+      examStreamRef.current = null;
+    }
+    
+    if (examVideoRef.current) {
+      examVideoRef.current.srcObject = null;
+    }
+    
+    setExamJoined(false);
+    setActiveExamSession(null);
+  };
+  
+  const handleSubmitExam = () => {
+    if (window.confirm('Bạn có chắc chắn muốn nộp bài thi không? Dữ liệu bài làm và hình ảnh giám sát AI sẽ được lưu trữ.')) {
+      alert('Nộp bài thành công! Cảm ơn bạn đã hoàn thành bài thi.');
+      handleExitExam();
+    }
+  };
+
+  if (examJoined && activeExamSession) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white font-sans flex flex-col transition-all duration-300 relative overflow-hidden">
+
+        {/* Top Navbar */}
+        <nav className="glass-panel border-b border-slate-800/80 px-6 py-4 flex items-center justify-between backdrop-blur-md z-30">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <ShieldCheck className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="font-bold text-white text-sm uppercase tracking-wide leading-tight">AI PROCTOR - PHÒNG THI TRỰC TUYẾN</h1>
+              <p className="text-[11px] text-cyan-400 font-mono">Ca thi: {activeExamSession.subject?.name || 'Môn học'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800">
+              <span className={`w-2.5 h-2.5 rounded-full ${
+                wsStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : wsStatus === 'connecting' ? 'bg-amber-400 animate-pulse' : 'bg-red-500'
+              }`}></span>
+              <span className="text-xs font-semibold text-slate-300 font-mono">
+                AI Proctor: {wsStatus === 'connected' ? 'ĐANG GIÁM SÁT' : wsStatus === 'connecting' ? 'ĐANG KẾT NỐI' : 'MẤT KẾT NỐI'}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-950/60 border border-indigo-800/40 text-indigo-200">
+              <Clock className="w-4 h-4 text-cyan-400" />
+              <span className="text-xs font-bold font-mono">60:00</span>
+            </div>
+          </div>
+        </nav>
+
+        {/* Content Area */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 p-6 overflow-hidden">
+          {/* Left: Mock Exam quiz (col-span-3) */}
+          <div className="lg:col-span-3 glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col justify-between overflow-y-auto max-h-[78vh]">
+            <div className="space-y-6">
+              <div className="border-b border-slate-800 pb-3">
+                <h2 className="font-bold text-white text-base">ĐỀ THI KIỂM THỬ THỜI GIAN THỰC</h2>
+                <p className="text-xs text-slate-400 mt-1">Vui lòng hoàn thành các câu hỏi trắc nghiệm dưới sự giám sát của hệ thống AI proctoring.</p>
+              </div>
+
+              <div className="space-y-5">
+                {MOCK_QUESTIONS.map((q, idx) => (
+                  <div key={q.id} className="space-y-2.5 p-4 rounded-xl bg-slate-900/40 border border-slate-800/60 hover:border-slate-850 transition-all">
+                    <h3 className="text-xs font-semibold text-slate-200 leading-relaxed">
+                      Câu {idx + 1}: {q.question}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1.5">
+                      {q.options.map((opt) => {
+                        const isSelected = answers[q.id] === opt;
+                        return (
+                          <button
+                            key={opt}
+                            onClick={() => setAnswers(prev => ({ ...prev, [q.id]: opt }))}
+                            className={`p-2.5 rounded-xl text-[11px] font-medium text-left border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/60 shadow-md shadow-indigo-600/5'
+                                : 'bg-slate-950/40 text-slate-400 border-slate-800 hover:border-slate-700/60 hover:text-slate-300'
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="border-t border-slate-800 pt-6 mt-8 flex items-center justify-between">
+              <div className="text-xs text-slate-500">
+                Đã trả lời: <span className="text-slate-300 font-bold font-mono">{Object.keys(answers).length}/5</span> câu hỏi
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleExitExam}
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Thoát phòng thi
+                </button>
+                <button
+                  onClick={handleSubmitExam}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/20 transition-all cursor-pointer"
+                >
+                  Nộp bài thi
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Camera Feed & Proctoring Console (col-span-1) */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Video className="w-4 h-4 text-indigo-400 animate-pulse" /> Camera Giám Sát
+                </h3>
+                <span className="text-[10px] text-cyan-400 font-mono">10 FPS (640x480)</span>
+              </div>
+
+              <div className="relative aspect-video rounded-xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center">
+                <video
+                  ref={examVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                />
+                <canvas ref={examCanvasRef} width={640} height={480} className="hidden" />
+              </div>
+
+              <div className="p-3.5 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-300 text-xs flex items-start gap-2.5">
+                <ShieldCheck className="w-5 h-5 shrink-0 text-cyan-400 mt-0.5" />
+                <div>
+                  <h4 className="font-bold text-white uppercase tracking-wide">Giám sát Bảo mật</h4>
+                  <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+                    Hệ thống AI đang chạy ngầm để giám sát và ghi nhận ca thi một cách bảo mật. Vui lòng tập trung làm bài và giữ khuôn mặt chính diện với camera.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white font-sans pb-12 relative overflow-hidden">
@@ -292,12 +590,18 @@ export default function UserPage() {
                           </span>
                         </div>
                         
-                        <button 
-                          disabled
-                          className="px-4 py-2 rounded-xl bg-slate-800 text-slate-400 border border-slate-700 text-xs font-semibold select-none flex items-center gap-1.5 opacity-60 cursor-not-allowed"
-                        >
-                          <Info className="w-3.5 h-3.5" /> Chưa bắt đầu
-                        </button>
+                        {session.mode === 'OFFLINE' ? (
+                          <div className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed select-none">
+                            <Info className="w-3.5 h-3.5 text-slate-500 animate-pulse" /> Thi tại phòng
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => handleJoinExam(session)}
+                            className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/20 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" /> Vào phòng thi
+                          </button>
+                        )}
                       </div>
                     </div>
                   );

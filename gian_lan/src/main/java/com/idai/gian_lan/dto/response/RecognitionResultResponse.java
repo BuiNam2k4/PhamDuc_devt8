@@ -27,5 +27,11 @@ public class RecognitionResultResponse {
 
     String modelName;
 
+    String studentUsername;
+
+    String studentFullName;
+
     String examSessionCameraId;
+
+    String examSessionId;
 }

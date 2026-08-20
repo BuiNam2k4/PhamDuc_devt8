@@ -5,6 +5,8 @@ import com.idai.gian_lan.dto.enums.ExamStatus;
 import com.idai.gian_lan.dto.request.ExamSessionCreationRequest;
 import com.idai.gian_lan.dto.request.ExamSessionUpdateRequest;
 import com.idai.gian_lan.dto.response.ExamSessionResponse;
+import com.idai.gian_lan.dto.response.CameraResponse;
+import com.idai.gian_lan.dto.response.ExamSessionCameraResponse;
 import com.idai.gian_lan.entity.ExamSession;
 import com.idai.gian_lan.entity.ExamSessionDetail;
 import com.idai.gian_lan.entity.Room;
@@ -18,7 +20,9 @@ import com.idai.gian_lan.repository.ExamSessionDetailRepository;
 import com.idai.gian_lan.repository.ExamSessionRepository;
 import com.idai.gian_lan.repository.RoomRepository;
 import com.idai.gian_lan.entity.ExamSessionCamera;
+import com.idai.gian_lan.entity.Camera;
 import com.idai.gian_lan.repository.ExamSessionCameraRepository;
+import com.idai.gian_lan.repository.CameraRepository;
 import com.idai.gian_lan.repository.StudentRepository;
 import com.idai.gian_lan.repository.SubjectRepository;
 import com.idai.gian_lan.repository.ModelRepository;
@@ -41,6 +45,7 @@ public class ExamSessionServiceImpl implements ExamSessionService {
     ExamSessionRepository examSessionRepository;
     ExamSessionDetailRepository examSessionDetailRepository;
     ExamSessionCameraRepository examSessionCameraRepository;
+    CameraRepository cameraRepository;
     RoomRepository roomRepository;
     SubjectRepository subjectRepository;
     StudentRepository studentRepository;
@@ -98,21 +103,50 @@ public class ExamSessionServiceImpl implements ExamSessionService {
 
         ExamSession savedSession = examSessionRepository.save(examSession);
 
-        if (savedSession.getMode() == ExamMode.ONLINE) {
-            ExamSessionCamera sessionCamera = ExamSessionCamera.builder()
-                    .examSession(savedSession)
-                    .camera(null)
-                    .build();
-            examSessionCameraRepository.save(sessionCamera);
+        if (savedSession.getMode() == ExamMode.OFFLINE) {
+            List<Camera> camerasToMap = new ArrayList<>();
+            if (request.getCameraIds() != null && !request.getCameraIds().isEmpty()) {
+                for (String camId : request.getCameraIds()) {
+                    cameraRepository.findById(camId).ifPresent(camerasToMap::add);
+                }
+            } else if (room != null) {
+                // Auto-associate cameras in the same room by location match
+                List<Camera> allCams = cameraRepository.findAll();
+                for (Camera cam : allCams) {
+                    if (cam.getLocation() != null && room.getName() != null && cam.getLocation().toLowerCase().contains(room.getName().toLowerCase())) {
+                        camerasToMap.add(cam);
+                    }
+                }
+                // If still empty, fall back to adding the first camera in the DB
+                if (camerasToMap.isEmpty() && !allCams.isEmpty()) {
+                    camerasToMap.add(allCams.get(0));
+                }
+            }
+
+            for (Camera camera : camerasToMap) {
+                ExamSessionCamera esc = ExamSessionCamera.builder()
+                        .examSession(savedSession)
+                        .camera(camera)
+                        .build();
+                examSessionCameraRepository.save(esc);
+            }
         }
 
-        return examSessionMapper.toExamSessionResponse(savedSession);
+        ExamSessionResponse response = examSessionMapper.toExamSessionResponse(savedSession);
+        response.setExamSessionCameras(mapToExamSessionCameraResponses(savedSession.getId()));
+        return response;
     }
 
     @Override
     public List<ExamSessionResponse> getAllExamSessions() {
         return examSessionRepository.findAll().stream()
-                .map(examSessionMapper::toExamSessionResponse)
+                .map(session -> {
+                    ExamSessionResponse res = examSessionMapper.toExamSessionResponse(session);
+                    examSessionCameraRepository.findByExamSession_Id(session.getId())
+                            .ifPresent(cam -> res.setExamSessionCameraId(cam.getId()));
+                    res.setExamSessionCameras(mapToExamSessionCameraResponses(session.getId()));
+                    return res;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -120,7 +154,11 @@ public class ExamSessionServiceImpl implements ExamSessionService {
     public ExamSessionResponse getExamSessionById(String id) {
         ExamSession examSession = examSessionRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.EXAM_SESSION_NOT_EXISTED));
-        return examSessionMapper.toExamSessionResponse(examSession);
+        ExamSessionResponse res = examSessionMapper.toExamSessionResponse(examSession);
+        examSessionCameraRepository.findByExamSession_Id(id)
+                .ifPresent(cam -> res.setExamSessionCameraId(cam.getId()));
+        res.setExamSessionCameras(mapToExamSessionCameraResponses(id));
+        return res;
     }
 
     @Override
@@ -156,7 +194,51 @@ public class ExamSessionServiceImpl implements ExamSessionService {
         }
 
         ExamSession updatedSession = examSessionRepository.save(examSession);
-        return examSessionMapper.toExamSessionResponse(updatedSession);
+
+        if (updatedSession.getMode() == ExamMode.ONLINE) {
+            examSessionCameraRepository.deleteByExamSession_Id(id);
+        } else {
+            if (request.getCameraIds() != null) {
+                examSessionCameraRepository.deleteByExamSession_Id(id);
+                for (String camId : request.getCameraIds()) {
+                    cameraRepository.findById(camId).ifPresent(camera -> {
+                        ExamSessionCamera esc = ExamSessionCamera.builder()
+                                .examSession(updatedSession)
+                                .camera(camera)
+                                .build();
+                        examSessionCameraRepository.save(esc);
+                    });
+                }
+            } else {
+                List<ExamSessionCamera> existing = examSessionCameraRepository.findAllByExamSession_Id(id);
+                if (existing.isEmpty() && updatedSession.getRoom() != null) {
+                    Room room = updatedSession.getRoom();
+                    List<Camera> camerasToMap = new ArrayList<>();
+                    List<Camera> allCams = cameraRepository.findAll();
+                    for (Camera cam : allCams) {
+                        if (cam.getLocation() != null && room.getName() != null && cam.getLocation().toLowerCase().contains(room.getName().toLowerCase())) {
+                            camerasToMap.add(cam);
+                        }
+                    }
+                    if (camerasToMap.isEmpty() && !allCams.isEmpty()) {
+                        camerasToMap.add(allCams.get(0));
+                    }
+                    for (Camera camera : camerasToMap) {
+                        ExamSessionCamera esc = ExamSessionCamera.builder()
+                                .examSession(updatedSession)
+                                .camera(camera)
+                                .build();
+                        examSessionCameraRepository.save(esc);
+                    }
+                }
+            }
+        }
+
+        ExamSessionResponse res = examSessionMapper.toExamSessionResponse(updatedSession);
+        examSessionCameraRepository.findByExamSession_Id(id)
+                .ifPresent(cam -> res.setExamSessionCameraId(cam.getId()));
+        res.setExamSessionCameras(mapToExamSessionCameraResponses(id));
+        return res;
     }
 
     @Override
@@ -199,6 +281,31 @@ public class ExamSessionServiceImpl implements ExamSessionService {
 
         examSession.setExamSessionDetails(details);
         ExamSession updatedSession = examSessionRepository.save(examSession);
-        return examSessionMapper.toExamSessionResponse(updatedSession);
+        ExamSessionResponse res = examSessionMapper.toExamSessionResponse(updatedSession);
+        res.setExamSessionCameras(mapToExamSessionCameraResponses(id));
+        return res;
+    }
+
+    private List<ExamSessionCameraResponse> mapToExamSessionCameraResponses(String sessionId) {
+        return examSessionCameraRepository.findAllByExamSession_Id(sessionId).stream()
+                .map(esc -> {
+                    CameraResponse camRes = null;
+                    if (esc.getCamera() != null) {
+                        camRes = CameraResponse.builder()
+                                .id(esc.getCamera().getId())
+                                .cameraCode(esc.getCamera().getCameraCode())
+                                .name(esc.getCamera().getName())
+                                .ipAddress(esc.getCamera().getIpAddress())
+                                .location(esc.getCamera().getLocation())
+                                .status(esc.getCamera().getStatus())
+                                .build();
+                    }
+                    return ExamSessionCameraResponse.builder()
+                            .id(esc.getId())
+                            .videoPath(esc.getVideoPath())
+                            .camera(camRes)
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 }

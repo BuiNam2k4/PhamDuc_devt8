@@ -131,6 +131,7 @@ class SpringBootClient:
         detection_time: str = None,
         exam_session_camera_id: str = None,
         model_id: str = None,
+        student_username: str = None,
     ) -> dict:
         """
         Gửi kết quả vi phạm lên Spring Boot để lưu vào MySQL.
@@ -143,6 +144,7 @@ class SpringBootClient:
             detection_time: Thời gian phát hiện (ISO format)
             exam_session_camera_id: ID camera session (nếu None, dùng default)
             model_id: ID model AI (nếu None, dùng default)
+            student_username: Tên tài khoản thí sinh (nếu thi online)
             
         Returns:
             dict: {"success": bool, "data": response_data hoặc None, "error": str hoặc None}
@@ -176,6 +178,7 @@ class SpringBootClient:
             "detail": detail,
             "imageUrl": image_url,
             "modelId": model_id or self.default_model_id or None,
+            "studentUsername": student_username,
             "examSessionCameraId": (
                 exam_session_camera_id 
                 or self.default_exam_session_camera_id 

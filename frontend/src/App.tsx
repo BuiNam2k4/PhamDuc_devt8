@@ -14,6 +14,7 @@ import RoomManagementPage from './pages/RoomManagementPage';
 import SubjectManagementPage from './pages/SubjectManagementPage';
 import StudentManagementPage from './pages/StudentManagementPage';
 import ExamSessionManagementPage from './pages/ExamSessionManagementPage';
+import CameraManagementPage from './pages/CameraManagementPage';
 import CameraTestPage from './pages/camera-test';
 import { authService } from './services';
 
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="subjects" element={<SubjectManagementPage />} />
             <Route path="students" element={<StudentManagementPage />} />
             <Route path="exam-sessions" element={<ExamSessionManagementPage />} />
+            <Route path="cameras" element={<CameraManagementPage />} />
             <Route path="camera-test" element={<CameraTestPage />} />
           </Route>
         </Route>

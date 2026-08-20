@@ -38,6 +38,7 @@ const mainNavItems: NavItem[] = [
 
 const managementNavItems: NavItem[] = [
   { path: '/admin/exam-sessions', label: 'Quản lý Ca Thi', icon: Calendar, badge: null },
+  { path: '/admin/cameras', label: 'Quản lý Camera', icon: Camera, badge: null },
   { path: '/admin/students', label: 'Quản lý Thí Sinh', icon: Users, badge: null },
   { path: '/admin/subjects', label: 'Quản lý Môn Học', icon: BookOpen, badge: null },
   { path: '/admin/rooms', label: 'Quản lý Phòng Thi', icon: Building, badge: null },

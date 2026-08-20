@@ -28,4 +28,6 @@ public class ExamSessionUpdateRequest {
     String subjectId;
 
     String modelId;
+
+    java.util.List<String> cameraIds;
 }

@@ -48,4 +48,12 @@ public class RecognitionResult {
     @ManyToOne
     @JoinColumn(name = "exam_session_camera_id")
     ExamSessionCamera examSessionCamera;
+
+    @ManyToOne
+    @JoinColumn(name = "exam_session_id")
+    ExamSession examSession;
+
+    @ManyToOne
+    @JoinColumn(name = "student_id")
+    Student student;
 }

@@ -9,9 +9,12 @@ import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
+import org.mapstruct.Mapping;
+
 @Mapper(componentModel = "spring")
 public interface SubjectMapper {
 
+    @Mapping(target = "id", ignore = true)
     Subject toSubject(SubjectCreationRequest request);
 
     SubjectResponse toSubjectResponse(Subject subject);
