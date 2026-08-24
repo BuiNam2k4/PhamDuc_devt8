@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { VideoOff, Calendar } from 'lucide-react';
+import { VideoOff, Calendar, AlertTriangle } from 'lucide-react';
 import { examSessionService } from '../services/examSessionService';
 import { ExamSession } from '../types';
-import { CandidateCard, CandidateStatus } from '../components/CandidateCard';
+import { CandidateCard, CandidateStatus, LogEntry } from '../components/CandidateCard';
 import { MonitoringSessionSelector } from '../components/MonitoringSessionSelector';
 import { MonitoringMetadata } from '../components/MonitoringMetadata';
 
@@ -12,6 +12,7 @@ const VIOLATION_TRANSLATIONS: Record<string, string> = {
   'look_away': 'Quay đầu / Nhìn chỗ khác',
   'LOOK_AWAY': 'Quay đầu / Nhìn chỗ khác',
   'turning_around': 'Quay người ra sau / Quay lưng',
+  'TURN_AROUND': 'Quay người ra sau / Quay lưng',
   'multiple_faces': 'Nhiều khuôn mặt',
   'face_not_detected': 'Không phát hiện khuôn mặt',
   'camera_blocked': 'Camera bị che khuất'
@@ -31,34 +32,65 @@ export default function RealtimeMonitoringPage() {
   // Map of candidate username -> candidate status
   const [candidateStatuses, setCandidateStatuses] = useState<Record<string, CandidateStatus>>({});
 
+  // Modal state for viewing violation details
+  const [selectedViolationLog, setSelectedViolationLog] = useState<
+    (LogEntry & { fullName: string; studentCode: string; seatNumber: string }) | null
+  >(null);
+
   const wsRef = useRef<WebSocket | null>(null);
 
-  // Map of active cameras: examSessionCameraId -> { stream, ws, interval, video?, canvas? }
-  const activeCamerasRef = useRef<Record<string, { stream: MediaStream; ws: WebSocket; interval: any; video?: HTMLVideoElement; canvas?: HTMLCanvasElement }>>({});
+  // Map of active cameras: examSessionCameraId -> { stream, ws, timeout?, video?, canvas?, isProcessing?, lastSendTime? }
+  const activeCamerasRef = useRef<Record<string, { stream: MediaStream; ws: WebSocket; timeout?: any; video?: HTMLVideoElement; canvas?: HTMLCanvasElement; isProcessing?: boolean; lastSendTime?: number }>>({});
+
+  const sendRoomFrame = (id: string) => {
+    const active = activeCamerasRef.current[id];
+    if (!active || !active.video || !active.canvas || !active.ws || active.ws.readyState !== WebSocket.OPEN) return;
+    if (active.isProcessing) return;
+
+    const { video, canvas, ws } = active;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    active.isProcessing = true;
+    active.lastSendTime = Date.now();
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const base64Frame = canvas.toDataURL('image/jpeg', 0.5);
+    try {
+      ws.send(JSON.stringify({
+        type: 'frame',
+        data: base64Frame,
+        timestamp: active.lastSendTime
+      }));
+    } catch (e) {
+      console.error(`Error sending frame for room camera ${id}:`, e);
+      active.isProcessing = false;
+    }
+  };
+
+  const scheduleNextRoomFrame = (id: string) => {
+    const active = activeCamerasRef.current[id];
+    if (!active) return;
+
+    if (active.timeout) clearTimeout(active.timeout);
+    active.isProcessing = false;
+
+    const elapsed = Date.now() - (active.lastSendTime || 0);
+    const targetInterval = Math.round(1000 / fps);
+    const delay = Math.max(0, targetInterval - elapsed);
+
+    active.timeout = setTimeout(() => {
+      sendRoomFrame(id);
+    }, delay);
+  };
 
   // Dynamically update interval of all active cameras when FPS is changed
   useEffect(() => {
-    const intervalMs = Math.round(1000 / fps);
-    console.log(`Updating active room cameras interval to ${fps} FPS (${intervalMs}ms)`);
+    console.log(`Updating active room cameras to target ${fps} FPS`);
     Object.keys(activeCamerasRef.current).forEach(id => {
       const active = activeCamerasRef.current[id];
-      if (active && active.video && active.canvas) {
-        clearInterval(active.interval);
-        const { video, canvas, ws } = active;
-        active.interval = setInterval(() => {
-          if (video && canvas && ws && ws.readyState === WebSocket.OPEN) {
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-              const base64Frame = canvas.toDataURL('image/jpeg', 0.5);
-              ws.send(JSON.stringify({
-                type: 'frame',
-                data: base64Frame,
-                timestamp: Date.now()
-              }));
-            }
-          }
-        }, intervalMs);
+      if (active) {
+        scheduleNextRoomFrame(id);
       }
     });
   }, [fps]);
@@ -77,6 +109,7 @@ export default function RealtimeMonitoringPage() {
   };
 
   const startRoomCamera = async (examSessionCameraId: string) => {
+    let stream: MediaStream | null = null;
     try {
       console.log('Starting Room Camera:', examSessionCameraId);
 
@@ -86,11 +119,11 @@ export default function RealtimeMonitoringPage() {
       const activeCount = Object.keys(activeCamerasRef.current).length;
       const deviceId = videoDevices[activeCount % videoDevices.length]?.deviceId;
 
-      const constraints = deviceId 
+      const constraints = deviceId
         ? { video: { deviceId: { exact: deviceId }, width: 640, height: 480 } }
         : { video: { width: 640, height: 480 } };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       // Create hidden capture elements dynamically in DOM
       const containerId = `capture-container-${examSessionCameraId}`;
@@ -108,7 +141,7 @@ export default function RealtimeMonitoringPage() {
       video.muted = true;
       video.srcObject = stream;
       container.appendChild(video);
-      await video.play().catch(() => {});
+      await video.play().catch(() => { });
 
       const canvas = document.createElement('canvas');
       canvas.width = 640;
@@ -122,33 +155,24 @@ export default function RealtimeMonitoringPage() {
 
       ws.onopen = () => {
         console.log(`Room Camera ${examSessionCameraId} WS Connected.`);
+        // Kick off flow control loop
+        sendRoomFrame(examSessionCameraId);
+      };
+      ws.onmessage = (event) => {
+        // Ack response received from AI backend -> trigger next frame
+        scheduleNextRoomFrame(examSessionCameraId);
       };
       ws.onclose = () => {
         console.log(`Room Camera ${examSessionCameraId} WS Closed.`);
+        stopRoomCamera(examSessionCameraId);
       };
       ws.onerror = (err) => {
         console.error(`Room Camera ${examSessionCameraId} WS Error:`, err);
+        stopRoomCamera(examSessionCameraId);
       };
 
-      // Loop to send frames to AI backend
-      const intervalMs = Math.round(1000 / fps);
-      const interval = setInterval(() => {
-        if (video && canvas && ws && ws.readyState === WebSocket.OPEN) {
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const base64Frame = canvas.toDataURL('image/jpeg', 0.5);
-            ws.send(JSON.stringify({
-              type: 'frame',
-              data: base64Frame,
-              timestamp: Date.now()
-            }));
-          }
-        }
-      }, intervalMs);
-
       // Save to active cameras map including video and canvas elements for dynamic FPS updates
-      activeCamerasRef.current[examSessionCameraId] = { stream, ws, interval, video, canvas };
+      activeCamerasRef.current[examSessionCameraId] = { stream, ws, video, canvas };
 
       // Update UI state
       setCandidateStatuses(prev => {
@@ -176,6 +200,13 @@ export default function RealtimeMonitoringPage() {
 
     } catch (err) {
       console.error('Failed to start Room Camera:', err);
+      if (stream) {
+        try {
+          stream.getTracks().forEach(track => track.stop());
+        } catch (e) {
+          console.error('Failed to stop stream tracks on catch:', e);
+        }
+      }
       alert('Không thể mở camera. Vui lòng kiểm tra thiết bị hoặc quyền truy cập camera.');
     }
   };
@@ -184,10 +215,20 @@ export default function RealtimeMonitoringPage() {
     console.log('Stopping Room Camera:', examSessionCameraId);
     const active = activeCamerasRef.current[examSessionCameraId];
     if (active) {
-      clearInterval(active.interval);
-      active.ws.close();
-      active.stream.getTracks().forEach(track => track.stop());
+      if (active.timeout) {
+        clearTimeout(active.timeout);
+      }
+      
+      // Delete from ref map first to prevent re-entrancy loops if close() triggers onclose synchronously
       delete activeCamerasRef.current[examSessionCameraId];
+
+      try {
+        active.ws.close();
+      } catch (e) {}
+
+      try {
+        active.stream.getTracks().forEach(track => track.stop());
+      } catch (e) {}
     }
 
     const container = document.getElementById(`capture-container-${examSessionCameraId}`);
@@ -203,6 +244,7 @@ export default function RealtimeMonitoringPage() {
         [examSessionCameraId]: {
           ...current,
           isActive: false,
+          currentFrame: undefined,
           logs: [
             {
               id: Date.now().toString(),
@@ -223,7 +265,9 @@ export default function RealtimeMonitoringPage() {
     Object.keys(activeCamerasRef.current).forEach(id => {
       const active = activeCamerasRef.current[id];
       if (active) {
-        clearInterval(active.interval);
+        if (active.timeout) {
+          clearTimeout(active.timeout);
+        }
         active.ws.close();
         active.stream.getTracks().forEach(track => track.stop());
       }
@@ -355,7 +399,7 @@ export default function RealtimeMonitoringPage() {
               audio.play().catch(() => { });
             } catch (e) { }
           }
-        } else if (Math.abs(data.head_yaw) > 30.0) {
+        } else if (selectedSession?.mode !== 'OFFLINE' && Math.abs(data.head_yaw) > 30.0) {
           message = `Quay đầu quá mức (${data.head_yaw.toFixed(1)}°)`;
           severity = 'MEDIUM';
         } else {
@@ -364,16 +408,24 @@ export default function RealtimeMonitoringPage() {
         }
       }
 
-      // Add log entry if it differs from the last one (except violations which are always logged)
+      // Add log entry if it differs from the last one or if it is a violation with a cooldown (5 seconds)
       const lastLog = current.logs[0];
       const newLogs = [...current.logs];
-      if (!lastLog || lastLog.message !== message || isViolation) {
+      const isLoggableViolation = isViolation || severity === 'HIGH' || severity === 'MEDIUM';
+
+      const now = Date.now();
+      const lastLogTime = lastLog ? parseInt(lastLog.id) : 0;
+      // If it is the exact same violation message, only log again if 5 seconds have passed
+      const isDuplicate = lastLog && lastLog.message === message && (now - lastLogTime < 5000);
+
+      if (isLoggableViolation && !isDuplicate) {
         newLogs.unshift({
-          id: Date.now().toString(),
+          id: now.toString(),
           time: new Date().toLocaleTimeString(),
           message,
-          isViolation: isViolation || severity === 'HIGH' || severity === 'MEDIUM',
-          severity
+          isViolation: true,
+          severity,
+          frame: data.frame
         });
       }
 
@@ -387,8 +439,8 @@ export default function RealtimeMonitoringPage() {
           headYaw: data.head_yaw ?? 0,
           headPitch: data.head_pitch ?? 0,
           brightness: data.brightness ?? 100,
-          alert: isViolation ? true : current.alert,
-          lastViolationDescription: isViolation ? message : current.lastViolationDescription,
+          alert: (isViolation || severity === 'HIGH' || severity === 'MEDIUM') ? true : false,
+          lastViolationDescription: (isViolation || severity === 'HIGH' || severity === 'MEDIUM') ? message : '',
           currentFrame: data.frame,
           logs: newLogs.slice(0, 20)
         }
@@ -681,6 +733,14 @@ export default function RealtimeMonitoringPage() {
                   onTakeSnapshot={(uname, fname) => alert(`Chụp ảnh bằng chứng cho thí sinh: ${fname}`)}
                   mode={selectedSession?.mode}
                   onToggleCamera={toggleRoomCamera}
+                  onViewLogDetails={(log, info) => {
+                    setSelectedViolationLog({
+                      ...log,
+                      fullName: info.fullName,
+                      studentCode: info.studentCode,
+                      seatNumber: info.seatNumber
+                    });
+                  }}
                 />
               );
             })}
@@ -693,6 +753,84 @@ export default function RealtimeMonitoringPage() {
               <p className="text-xs text-slate-500">Không có thí sinh nào được đăng ký trong ca thi này.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Violation Detail Modal */}
+      {selectedViolationLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="w-full max-w-lg glass-panel border border-slate-800 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300">
+            {/* Header */}
+            <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-xs font-extrabold uppercase tracking-widest text-red-400 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />
+                Chi Tiết Cảnh Báo Vi Phạm
+              </h3>
+              <button 
+                onClick={() => setSelectedViolationLog(null)}
+                className="text-slate-400 hover:text-white transition-all cursor-pointer font-bold text-xs p-1 hover:bg-slate-800 rounded"
+              >
+                Đóng
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-4">
+              {/* Student Info */}
+              <div className="grid grid-cols-2 gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-900 text-xs">
+                <div>
+                  <span className="text-slate-500 block uppercase text-[9px] font-bold">Thí sinh</span>
+                  <span className="text-slate-200 font-semibold">{selectedViolationLog.fullName}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block uppercase text-[9px] font-bold">Số báo danh</span>
+                  <span className="text-slate-200 font-mono font-semibold">{selectedViolationLog.studentCode}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block uppercase text-[9px] font-bold">Vị trí</span>
+                  <span className="text-slate-200 font-semibold">Góc {selectedViolationLog.seatNumber}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block uppercase text-[9px] font-bold">Thời gian</span>
+                  <span className="text-slate-200 font-mono font-semibold">{selectedViolationLog.time}</span>
+                </div>
+              </div>
+
+              {/* Violation Description */}
+              <div className="p-3 bg-red-950/20 border border-red-500/20 rounded-xl text-xs">
+                <span className="text-red-400 block uppercase text-[9px] font-bold mb-1">Nội dung cảnh báo</span>
+                <span className="text-red-200 font-medium">{selectedViolationLog.message}</span>
+              </div>
+
+              {/* Evidence Snapshot */}
+              <div className="space-y-1.5">
+                <span className="text-slate-400 block uppercase text-[9px] font-bold">Hình ảnh bằng chứng</span>
+                <div className="relative aspect-[4/3] rounded-xl bg-slate-900 border border-slate-800/80 overflow-hidden flex items-center justify-center">
+                  {selectedViolationLog.frame ? (
+                    <img 
+                      src={selectedViolationLog.frame} 
+                      alt="Violation Evidence"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-slate-600 text-center py-8 text-xs">
+                      Không có hình ảnh snapshot lưu trữ
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 bg-slate-900 border-t border-slate-800 flex justify-end">
+              <button
+                onClick={() => setSelectedViolationLog(null)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-slate-700"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

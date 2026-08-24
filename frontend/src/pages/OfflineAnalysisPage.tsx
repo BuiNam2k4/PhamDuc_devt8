@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  FileVideo, 
-  Upload, 
-  Play, 
-  Clock, 
-  Film, 
+import {
+  FileVideo,
+  Upload,
+  Play,
+  Clock,
+  Film,
   Download,
   Smartphone,
   BookOpen,
@@ -97,7 +97,7 @@ export default function OfflineAnalysisPage() {
         <div className="glass-panel p-6 rounded-xl border border-slate-800 space-y-4 flex flex-col justify-between">
           <div>
             <h3 className="text-sm font-bold text-white mb-2">1. Chọn Tệp Video Phòng Thi</h3>
-            
+
             <label className="border-2 border-dashed border-slate-700 hover:border-cyan-500/80 bg-slate-900/60 rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all">
               <Upload className="w-8 h-8 text-cyan-400 mb-2 animate-pulse" />
               <span className="text-xs font-semibold text-slate-200">Kéo thả hoặc Bấm để chọn tệp</span>
@@ -119,11 +119,10 @@ export default function OfflineAnalysisPage() {
           <button
             onClick={startAnalysis}
             disabled={!selectedFile || isScanning}
-            className={`w-full py-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${
-              !selectedFile || isScanning
+            className={`w-full py-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${!selectedFile || isScanning
                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
                 : 'bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white shadow-indigo-600/30'
-            }`}
+              }`}
           >
             {isScanning ? (
               <>
@@ -148,7 +147,7 @@ export default function OfflineAnalysisPage() {
             </h3>
 
             {scanResult && (
-              <button 
+              <button
                 onClick={() => alert('Đã tải về báo cáo vi phạm dạng PDF/Excel!')}
                 className="px-3 py-1.5 rounded-lg bg-emerald-600/80 hover:bg-emerald-600 text-white font-semibold text-xs flex items-center gap-1.5 shadow cursor-pointer"
               >
@@ -165,7 +164,7 @@ export default function OfflineAnalysisPage() {
                 <span className="font-bold text-cyan-400">{progress}%</span>
               </div>
               <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all duration-300 rounded-full"
                   style={{ width: `${progress}%` }}
                 ></div>
@@ -216,7 +215,7 @@ export default function OfflineAnalysisPage() {
 
                       <div className="flex items-center gap-3">
                         <span className="text-[10px] text-slate-400">Độ tin cậy: <strong className="text-emerald-400">{item.confidence}</strong></span>
-                        <button 
+                        <button
                           onClick={() => alert(`Xem ảnh bằng chứng snapshot tại mốc thời gian ${item.time}`)}
                           className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-medium border border-slate-700 cursor-pointer"
                         >

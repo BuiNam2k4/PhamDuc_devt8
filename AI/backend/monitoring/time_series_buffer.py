@@ -45,6 +45,7 @@ class PersonTimeSeriesBuffer:
         self.maxlen = maxlen
         self.buffer = deque(maxlen=maxlen)
         self.last_update_time = time.time()
+        self.is_mirrored = False
 
     def add_frame(self, frame_data: dict):
         """
@@ -67,6 +68,20 @@ class PersonTimeSeriesBuffer:
         }
         self.buffer.append(entry)
         self.last_update_time = time.time()
+
+        # Update mirrored state dynamically when candidate faces the camera directly
+        if entry['face_visible']:
+            hp = entry.get('head_pose', {})
+            yaw = hp.get('yaw', 0.0)
+            if abs(yaw) < 15.0:  # Only calibrate when facing relatively forward
+                kl = entry.get('key_landmarks', {})
+                l_shoulder = kl.get('left_shoulder', (0.0, 0.0))
+                r_shoulder = kl.get('right_shoulder', (0.0, 0.0))
+                if l_shoulder != (0.0, 0.0) and r_shoulder != (0.0, 0.0):
+                    if l_shoulder[0] < r_shoulder[0]:
+                        self.is_mirrored = True
+                    else:
+                        self.is_mirrored = False
 
     def get_window(self, n=None):
         """

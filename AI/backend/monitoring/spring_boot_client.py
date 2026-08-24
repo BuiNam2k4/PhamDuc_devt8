@@ -26,7 +26,7 @@ VIOLATION_TYPE_MAP = {
     'phone_detected':   'PHONE_DETECTED',
     'looking_away':     'LOOK_AWAY',
     'look_away':        'LOOK_AWAY',
-    'turning_around':   'LOOK_AWAY',
+    'turning_around':   'TURN_AROUND',
     'multiple_faces':   'MULTIPLE_FACES',
     'face_missing':     'FACE_NOT_DETECTED',
     'face_not_detected':'FACE_NOT_DETECTED',

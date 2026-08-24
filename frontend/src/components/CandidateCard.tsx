@@ -7,6 +7,7 @@ export interface LogEntry {
   message: string;
   isViolation: boolean;
   severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  frame?: string; // Captured frame when violation occurred
 }
 
 export interface CandidateStatus {
@@ -32,6 +33,10 @@ interface CandidateCardProps {
   onTakeSnapshot: (username: string, fullName: string) => void;
   mode?: 'ONLINE' | 'OFFLINE';
   onToggleCamera?: (username: string) => void;
+  onViewLogDetails?: (
+    log: LogEntry,
+    studentInfo: { fullName: string; studentCode: string; seatNumber: string }
+  ) => void;
 }
 
 export const CandidateCard: React.FC<CandidateCardProps> = ({
@@ -40,6 +45,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
   onTakeSnapshot,
   mode = 'ONLINE',
   onToggleCamera,
+  onViewLogDetails,
 }) => {
   return (
     <div 
@@ -74,7 +80,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
       </div>
 
       {/* Camera stream preview */}
-      <div className="relative aspect-video bg-slate-950 border-b border-slate-900/60 flex items-center justify-center overflow-hidden">
+      <div className="relative aspect-[4/3] bg-slate-950 border-b border-slate-900/60 flex items-center justify-center overflow-hidden">
         {status.isActive && status.currentFrame ? (
           <img 
             src={status.currentFrame} 
@@ -150,38 +156,45 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
           </div>
         </div>
 
-        {/* Alert Box (If flagged) */}
-        {status.alert && (
-          <div className="p-3 bg-red-950/30 border border-red-500/30 rounded-xl flex items-start gap-2.5 animate-pulse">
-            <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <h4 className="text-[10px] font-bold text-red-400 uppercase tracking-wide">Phát Hiện Vi Phạm</h4>
-              <p className="text-[10px] text-red-200 font-medium leading-tight">
-                {status.lastViolationDescription}
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Individual Behavior Log View */}
         <div className="space-y-2">
           <h4 className="text-[9px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5 text-indigo-400" /> Nhật ký hành vi riêng
+            <Activity className="w-3.5 h-3.5 text-indigo-400" /> Nhật ký vi phạm/cảnh báo
           </h4>
           <div className="h-32 overflow-y-auto bg-slate-950 border border-slate-850 rounded-xl p-2.5 font-mono text-[10px] space-y-1.5 scrollbar-thin">
-            {status.logs.map((log) => (
-              <div 
-                key={log.id} 
-                className={`flex items-start gap-1 pb-1 border-b border-slate-900/60 leading-normal ${
-                  log.isViolation 
-                    ? (log.severity === 'HIGH' ? 'text-red-400' : 'text-amber-400') 
-                    : 'text-slate-400'
-                }`}
-              >
-                <span className="text-slate-600 shrink-0">[{log.time}]</span>
-                <span className="flex-1">{log.message}</span>
-              </div>
-            ))}
+            {status.logs.filter(log => log.isViolation).length === 0 ? (
+              <div className="text-slate-600 text-center py-10">Chưa có cảnh báo nào ghi nhận</div>
+            ) : (
+              status.logs
+                .filter(log => log.isViolation)
+                .map((log) => (
+                  <div 
+                    key={log.id} 
+                    className="flex items-center justify-between gap-2 pb-1 border-b border-slate-900/60 leading-normal"
+                  >
+                    <div 
+                      className={`flex items-start gap-1 ${
+                        log.severity === 'HIGH' ? 'text-red-400' : 'text-amber-400'
+                      }`}
+                    >
+                      <span className="text-slate-600 shrink-0">[{log.time}]</span>
+                      <span className="flex-1">{log.message}</span>
+                    </div>
+                    {onViewLogDetails && (
+                      <button
+                        onClick={() => onViewLogDetails(log, { 
+                          fullName: status.fullName, 
+                          studentCode: status.studentCode, 
+                          seatNumber: status.seatNumber 
+                        })}
+                        className="px-1.5 py-0.5 bg-slate-900 hover:bg-slate-850 text-cyan-400 hover:text-cyan-300 border border-slate-800 rounded text-[9px] cursor-pointer shrink-0 transition-all font-semibold"
+                      >
+                        Chi tiết
+                      </button>
+                    )}
+                  </div>
+                ))
+            )}
           </div>
         </div>
 
@@ -217,15 +230,6 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
           >
             <Camera className="w-3.5 h-3.5" />
           </button>
-
-          {status.alert && (
-            <button
-              onClick={() => onClearAlert(status.username)}
-              className="px-2.5 py-1 bg-red-950/40 hover:bg-red-950/80 text-red-400 hover:text-red-300 border border-red-900/30 rounded font-semibold text-[10px] cursor-pointer"
-            >
-              Xóa cảnh báo
-            </button>
-          )}
         </div>
       </div>
     </div>

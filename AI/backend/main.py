@@ -184,6 +184,12 @@ async def websocket_endpoint(
                     session_id=resolved_session_id
                 )
                 
+                # Send the response back to the client itself (vital for client-side flow control)
+                try:
+                    await websocket.send_text(json.dumps(result))
+                except Exception as e:
+                    logger.error(f"Error sending response back to client: {e}")
+                
                 # Send all results (both detections and violations) to the admins
                 await manager.send_to_admins(json.dumps(result))
                     
@@ -221,8 +227,11 @@ async def process_frame(
         faces = face_detector.detect_faces(frame)
         face_count = len(faces)
         
-        # 2. Multi head pose estimation using Face Mesh
-        head_poses = head_pose_estimator.estimate_poses(frame)
+        # Determine if this specific session is for an offline camera
+        is_offline_session = session_id is not None and session_id.endswith("_admin")
+
+        # 2. Multi head pose estimation using Face Mesh (Skip in offline mode)
+        head_poses = [] if (OFFLINE_MODE or is_offline_session) else head_pose_estimator.estimate_poses(frame)
         
         # 3. Multi body pose estimation using MediaPipe Pose
         body_poses = pose_detector.detect_poses(frame)
@@ -311,7 +320,7 @@ async def process_frame(
             brightness=brightness,
             objects=objects,
             timestamp=timestamp,
-            offline_mode=OFFLINE_MODE
+            offline_mode=(OFFLINE_MODE or is_offline_session)
         )
         
         # Lấy thống kê buffer để gửi về frontend (debug/monitoring)

@@ -3,13 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { 
   User as UserIcon, 
   Video, 
-  VideoOff, 
   Calendar, 
   ShieldCheck, 
   LogOut, 
   Info,
   CheckCircle,
-  AlertTriangle,
   Clock,
   BookOpen
 } from 'lucide-react';
@@ -73,11 +71,6 @@ export default function UserPage() {
   const [currentUser, setCurrentUser] = useState<UserResponse | null>(null);
   const [sessions, setSessions] = useState<ExamSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const navigate = useNavigate();
 
   // Exam Room State
@@ -94,6 +87,9 @@ export default function UserPage() {
   const examWsRef = useRef<WebSocket | null>(null);
   const examSendLoopRef = useRef<any>(null);
   const examCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isProcessingRef = useRef<boolean>(false);
+  const lastSendTimeRef = useRef<number>(0);
+  const nextFrameTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -114,97 +110,79 @@ export default function UserPage() {
     fetchData();
 
     return () => {
-      stopCamera();
       // Cleanup exam if active
-      if (examSendLoopRef.current) clearInterval(examSendLoopRef.current);
+      if (nextFrameTimeoutRef.current) {
+        clearTimeout(nextFrameTimeoutRef.current);
+      }
       if (examWsRef.current) examWsRef.current.close();
       if (examStreamRef.current) examStreamRef.current.getTracks().forEach(track => track.stop());
     };
   }, []);
 
+  // Send single frame
+  const sendFrame = () => {
+    const video = examVideoRef.current;
+    const canvas = examCanvasRef.current;
+    const activeWs = examWsRef.current;
+
+    if (!video || !canvas || !activeWs || activeWs.readyState !== WebSocket.OPEN) return;
+    if (isProcessingRef.current) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    isProcessingRef.current = true;
+    lastSendTimeRef.current = Date.now();
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const base64Data = canvas.toDataURL('image/jpeg', 0.6);
+
+    const payload = {
+      type: 'frame',
+      data: base64Data,
+      timestamp: lastSendTimeRef.current
+    };
+
+    try {
+      activeWs.send(JSON.stringify(payload));
+    } catch (err) {
+      console.error('Error sending exam frame:', err);
+      isProcessingRef.current = false;
+    }
+  };
+
+  // Schedule next frame
+  const scheduleNextFrame = () => {
+    if (nextFrameTimeoutRef.current) {
+      clearTimeout(nextFrameTimeoutRef.current);
+    }
+    isProcessingRef.current = false;
+    const elapsed = Date.now() - lastSendTimeRef.current;
+    const targetInterval = Math.round(1000 / fps);
+    const delay = Math.max(0, targetInterval - elapsed);
+
+    nextFrameTimeoutRef.current = setTimeout(() => {
+      sendFrame();
+    }, delay);
+  };
+
   // Frame capture loop controlled by active exam connection and FPS setting
   useEffect(() => {
-    if (!examJoined || wsStatus !== 'connected' || !examWsRef.current) {
-      if (examSendLoopRef.current) {
-        clearInterval(examSendLoopRef.current);
-        examSendLoopRef.current = null;
+    if (examJoined && wsStatus === 'connected' && examWsRef.current) {
+      sendFrame();
+    } else {
+      if (nextFrameTimeoutRef.current) {
+        clearTimeout(nextFrameTimeoutRef.current);
+        nextFrameTimeoutRef.current = null;
       }
-      return;
+      isProcessingRef.current = false;
     }
-
-    if (examSendLoopRef.current) {
-      clearInterval(examSendLoopRef.current);
-    }
-
-    const intervalMs = Math.round(1000 / fps);
-    console.log(`Starting frame send loop at ${fps} FPS (${intervalMs}ms)`);
-
-    examSendLoopRef.current = setInterval(() => {
-      const video = examVideoRef.current;
-      const canvas = examCanvasRef.current;
-      const activeWs = examWsRef.current;
-
-      if (!video || !canvas || !activeWs || activeWs.readyState !== WebSocket.OPEN) return;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const base64Data = canvas.toDataURL('image/jpeg', 0.6);
-
-      const payload = {
-        type: 'frame',
-        data: base64Data,
-        timestamp: Date.now()
-      };
-
-      activeWs.send(JSON.stringify(payload));
-    }, intervalMs);
-
     return () => {
-      if (examSendLoopRef.current) {
-        clearInterval(examSendLoopRef.current);
-        examSendLoopRef.current = null;
+      if (nextFrameTimeoutRef.current) {
+        clearTimeout(nextFrameTimeoutRef.current);
       }
     };
   }, [examJoined, wsStatus, fps]);
-
-  const startCamera = async () => {
-    setCameraError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 640, height: 480, facingMode: 'user' } 
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setCameraActive(true);
-    } catch (err: any) {
-      console.error('Camera initialization failed:', err);
-      setCameraError('Không thể truy cập camera. Vui lòng cấp quyền camera cho trình duyệt.');
-      setCameraActive(false);
-    }
-  };
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    setCameraActive(false);
-  };
-
-  const handleToggleCamera = () => {
-    if (cameraActive) {
-      stopCamera();
-    } else {
-      startCamera();
-    }
-  };
 
   const handleLogout = () => {
     if (window.confirm('Bạn có chắc chắn muốn đăng xuất không?')) {
@@ -218,8 +196,6 @@ export default function UserPage() {
       alert('Đây là ca thi offline. Bạn cần làm bài trực tiếp tại phòng thi.');
       return;
     }
-    // Stop any active camera test first
-    stopCamera();
     
     setActiveExamSession(session);
     setExamJoined(true);
@@ -254,7 +230,9 @@ export default function UserPage() {
       };
       
       ws.onmessage = (event) => {
-        // Silent proctoring mode: student page receives no incoming telemetry messages
+        // Silent proctoring mode: student page receives no incoming telemetry messages,
+        // but we use the message event as an ack to schedule the next frame send.
+        scheduleNextFrame();
       };
       
       ws.onclose = () => {
@@ -274,10 +252,11 @@ export default function UserPage() {
   };
 
   const handleExitExam = () => {
-    if (examSendLoopRef.current) {
-      clearInterval(examSendLoopRef.current);
-      examSendLoopRef.current = null;
+    if (nextFrameTimeoutRef.current) {
+      clearTimeout(nextFrameTimeoutRef.current);
+      nextFrameTimeoutRef.current = null;
     }
+    isProcessingRef.current = false;
     
     if (examWsRef.current) {
       examWsRef.current.close();
@@ -408,7 +387,7 @@ export default function UserPage() {
                 <span className="text-[10px] text-cyan-400 font-mono">{fps} FPS (640x480)</span>
               </div>
 
-              <div className="relative aspect-video rounded-xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center">
+              <div className="relative aspect-[4/3] rounded-xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center">
                 <video
                   ref={examVideoRef}
                   autoPlay
@@ -520,59 +499,6 @@ export default function UserPage() {
             ) : (
               <div className="py-4 text-center text-xs text-red-400">Không tìm thấy thông tin sinh viên</div>
             )}
-          </div>
-
-          {/* Camera Verification Widget */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <Video className="w-4 h-4 text-indigo-400" /> Kiểm tra Thiết bị Camera
-            </h2>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Vui lòng kiểm tra camera trước giờ thi để đảm bảo hệ thống giám sát AI hoạt động ổn định.
-            </p>
-
-            {/* Video Preview Box */}
-            <div className="relative aspect-video rounded-xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center">
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                muted 
-                className={`w-full h-full object-cover ${cameraActive ? 'block' : 'hidden'}`}
-              />
-              {!cameraActive && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 space-y-2 text-center p-4">
-                  <VideoOff className="w-8 h-8 text-slate-600" />
-                  <span className="text-[11px]">Camera chưa được kích hoạt</span>
-                </div>
-              )}
-            </div>
-
-            {cameraError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{cameraError}</span>
-              </div>
-            )}
-
-            <button
-              onClick={handleToggleCamera}
-              className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${
-                cameraActive 
-                  ? 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700' 
-                  : 'bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white shadow-indigo-600/20'
-              }`}
-            >
-              {cameraActive ? (
-                <>
-                  <VideoOff className="w-4 h-4" /> Tắt Camera Test
-                </>
-              ) : (
-                <>
-                  <Video className="w-4 h-4" /> Bật Camera Test
-                </>
-              )}
-            </button>
           </div>
         </div>
 

@@ -79,11 +79,11 @@ class BehaviorAnalyzer:
             result = self._vote_looking_away(window)
             if result:
                 violations.append(result)
-        # else:
-            # Chế độ Offline: Kiểm tra quay người ra sau bằng Pose landmarks (ĐÃ TẮT ở chế độ offline)
-            # result = self._vote_turning_around(window)
-            # if result:
-            #     violations.append(result)
+        else:
+            # Chế độ Offline: Kiểm tra quay người ra sau bằng Pose landmarks
+            result = self._vote_turning_around(window, buffer)
+            if result:
+                violations.append(result)
 
         result = self._vote_cheat_sheet(window)
         if result:
@@ -112,6 +112,11 @@ class BehaviorAnalyzer:
         threshold = self.voting_thresholds['phone_usage']
 
         if ratio >= threshold:
+            # Chỉ emit violation nếu điện thoại thực sự xuất hiện ở frame hiện tại (để snapshot có bằng chứng)
+            current_frame = window[-1]
+            if 'cell phone' not in current_frame.get('objects_nearby', []):
+                return None
+
             return {
                 'type': 'phone_usage',
                 'confidence': round(ratio, 3),
@@ -165,6 +170,19 @@ class BehaviorAnalyzer:
         threshold = self.voting_thresholds['looking_away']
 
         if ratio >= threshold:
+            # Chỉ emit violation nếu ở frame hiện tại sinh viên thực sự đang nhìn đi nơi khác
+            current_frame = window[-1]
+            hp = current_frame.get('head_pose', {})
+            yaw = hp.get('yaw', 0.0)
+            pitch = hp.get('pitch', 0.0)
+            is_away = (
+                abs(yaw) > self.head_yaw_threshold or
+                pitch > self.head_pitch_up_threshold or
+                pitch < -self.head_pitch_down_threshold
+            )
+            if not is_away:
+                return None
+
             # Xác định hướng chính
             main_dir = max(dominant_direction, key=dominant_direction.get)
             dir_labels = {
@@ -208,6 +226,11 @@ class BehaviorAnalyzer:
         threshold = self.voting_thresholds['cheat_sheet']
 
         if ratio >= threshold:
+            # Chỉ emit violation nếu tài liệu thực sự xuất hiện ở frame hiện tại
+            current_frame = window[-1]
+            if 'book' not in current_frame.get('objects_nearby', []):
+                return None
+
             return {
                 'type': 'cheat_sheet',
                 'confidence': round(ratio, 3),
@@ -239,6 +262,11 @@ class BehaviorAnalyzer:
         threshold = self.voting_thresholds['face_missing']
 
         if ratio >= threshold:
+            # Chỉ emit nếu ở frame hiện tại khuôn mặt thực sự bị che/mất
+            current_frame = window[-1]
+            if current_frame.get('face_visible', True):
+                return None
+
             return {
                 'type': 'face_missing',
                 'confidence': round(ratio, 3),
@@ -274,13 +302,15 @@ class BehaviorAnalyzer:
 
         return sum(velocities) / len(velocities) if velocities else 0.0
 
-    def _vote_turning_around(self, window):
+    def _vote_turning_around(self, window, buffer=None):
         """
         Voting: Phát hiện quay người ra sau / quay nghiêng người góc lớn bằng Pose.
         """
         total = len(window)
         if total == 0:
             return None
+
+        is_mirrored = buffer.is_mirrored if buffer is not None else False
 
         count = 0
         for frame in window:
@@ -293,8 +323,13 @@ class BehaviorAnalyzer:
             if (l_shoulder != (0.0, 0.0) and r_shoulder != (0.0, 0.0) and 
                 l_hip != (0.0, 0.0) and r_hip != (0.0, 0.0)):
                 
-                # 1. Quay lưng hẳn lại: X của vai trái < X của vai phải
-                is_back_to_camera = l_shoulder[0] < r_shoulder[0]
+                # Check back to camera considering face visibility and mirrored stream calibration
+                is_back_to_camera = False
+                if not frame.get('face_visible', True):
+                    if is_mirrored:
+                        is_back_to_camera = l_shoulder[0] > r_shoulder[0]
+                    else:
+                        is_back_to_camera = l_shoulder[0] < r_shoulder[0]
 
                 # 2. Quay nghiêng người góc lớn:
                 # Chiều ngang vai:
@@ -313,6 +348,36 @@ class BehaviorAnalyzer:
         threshold = self.voting_thresholds['turning_around']
 
         if ratio >= threshold:
+            # Chỉ emit nếu ở frame hiện tại thực sự đang quay người
+            current_frame = window[-1]
+            kl = current_frame.get('key_landmarks', {})
+            l_shoulder = kl.get('left_shoulder', (0.0, 0.0))
+            r_shoulder = kl.get('right_shoulder', (0.0, 0.0))
+            l_hip = kl.get('left_hip', (0.0, 0.0))
+            r_hip = kl.get('right_hip', (0.0, 0.0))
+
+            is_turning = False
+            if (l_shoulder != (0.0, 0.0) and r_shoulder != (0.0, 0.0) and 
+                l_hip != (0.0, 0.0) and r_hip != (0.0, 0.0)):
+                
+                # Check current frame back to camera status
+                is_back_to_camera = False
+                if not current_frame.get('face_visible', True):
+                    if is_mirrored:
+                        is_back_to_camera = l_shoulder[0] > r_shoulder[0]
+                    else:
+                        is_back_to_camera = l_shoulder[0] < r_shoulder[0]
+
+                shoulder_width = abs(l_shoulder[0] - r_shoulder[0])
+                torso_height = abs((l_shoulder[1] + r_shoulder[1])/2 - (l_hip[1] + r_hip[1])/2)
+                is_sideways = False
+                if torso_height > 0.01:
+                    is_sideways = (shoulder_width / torso_height) < 0.35
+                is_turning = is_back_to_camera or is_sideways
+
+            if not is_turning:
+                return None
+
             return {
                 'type': 'turning_around',
                 'confidence': round(ratio, 3),
