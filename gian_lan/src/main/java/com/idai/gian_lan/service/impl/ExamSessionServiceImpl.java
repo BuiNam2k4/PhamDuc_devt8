@@ -142,8 +142,10 @@ public class ExamSessionServiceImpl implements ExamSessionService {
         return examSessionRepository.findAll().stream()
                 .map(session -> {
                     ExamSessionResponse res = examSessionMapper.toExamSessionResponse(session);
-                    examSessionCameraRepository.findByExamSession_Id(session.getId())
-                            .ifPresent(cam -> res.setExamSessionCameraId(cam.getId()));
+                    List<ExamSessionCamera> cams = examSessionCameraRepository.findAllByExamSession_Id(session.getId());
+                    if (!cams.isEmpty()) {
+                        res.setExamSessionCameraId(cams.get(0).getId());
+                    }
                     res.setExamSessionCameras(mapToExamSessionCameraResponses(session.getId()));
                     return res;
                 })
@@ -155,8 +157,10 @@ public class ExamSessionServiceImpl implements ExamSessionService {
         ExamSession examSession = examSessionRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.EXAM_SESSION_NOT_EXISTED));
         ExamSessionResponse res = examSessionMapper.toExamSessionResponse(examSession);
-        examSessionCameraRepository.findByExamSession_Id(id)
-                .ifPresent(cam -> res.setExamSessionCameraId(cam.getId()));
+        List<ExamSessionCamera> cams = examSessionCameraRepository.findAllByExamSession_Id(id);
+        if (!cams.isEmpty()) {
+            res.setExamSessionCameraId(cams.get(0).getId());
+        }
         res.setExamSessionCameras(mapToExamSessionCameraResponses(id));
         return res;
     }
@@ -235,8 +239,10 @@ public class ExamSessionServiceImpl implements ExamSessionService {
         }
 
         ExamSessionResponse res = examSessionMapper.toExamSessionResponse(updatedSession);
-        examSessionCameraRepository.findByExamSession_Id(id)
-                .ifPresent(cam -> res.setExamSessionCameraId(cam.getId()));
+        List<ExamSessionCamera> cams = examSessionCameraRepository.findAllByExamSession_Id(id);
+        if (!cams.isEmpty()) {
+            res.setExamSessionCameraId(cams.get(0).getId());
+        }
         res.setExamSessionCameras(mapToExamSessionCameraResponses(id));
         return res;
     }

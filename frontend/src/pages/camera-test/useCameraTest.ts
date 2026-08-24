@@ -7,7 +7,7 @@ export function useCameraTest() {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [isCamActive, setIsCamActive] = useState<boolean>(false);
-  const [fps, setFps] = useState<number>(3);
+  const [fps, setFps] = useState<number>(10);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
   // WebSocket Connection State
@@ -249,8 +249,6 @@ export function useCameraTest() {
               detailsStr = `Không có mặt thí sinh trong ${res.details?.duration || 0}s`;
             } else if (res.violation_type === 'camera_blocked') {
               detailsStr = `Camera quá tối/sáng: ${res.details?.brightness}%`;
-            } else if (res.violation_type === 'suspicious_object') {
-              detailsStr = `Phát hiện vật thể nghi vấn: ${res.details?.object_type}`;
             }
 
             addLog('warning', `PHÁT HIỆN HÀNH VI GIAN LẬN: ${translateViolation(res.violation_type)}`, detailsStr);
@@ -350,7 +348,7 @@ export function useCameraTest() {
       case 'look_away': return 'Quay đầu / Nhìn đi chỗ khác';
       case 'turning_around': return 'Quay người ra sau / Quay lưng';
       case 'camera_blocked': return 'Camera bị che khuất / Ánh sáng kém';
-      case 'suspicious_object': return 'Phát hiện vật thể nghi vấn';
+
       default: return type;
     }
   };

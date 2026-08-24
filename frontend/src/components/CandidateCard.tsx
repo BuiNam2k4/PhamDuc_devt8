@@ -31,6 +31,7 @@ interface CandidateCardProps {
   onClearAlert: (username: string) => void;
   onTakeSnapshot: (username: string, fullName: string) => void;
   mode?: 'ONLINE' | 'OFFLINE';
+  onToggleCamera?: (username: string) => void;
 }
 
 export const CandidateCard: React.FC<CandidateCardProps> = ({
@@ -38,6 +39,7 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
   onClearAlert,
   onTakeSnapshot,
   mode = 'ONLINE',
+  onToggleCamera,
 }) => {
   return (
     <div 
@@ -80,11 +82,21 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="flex flex-col items-center justify-center text-slate-500 space-y-1.5">
+          <div className="flex flex-col items-center justify-center text-slate-500 space-y-2 p-4 text-center">
             <VideoOff className="w-7 h-7 text-slate-700" />
             <span className="text-[9px] uppercase font-bold tracking-wider text-slate-500">
-              {status.isActive ? 'ĐANG TẢI LUỒNG VIDEO...' : 'THÍ SINH NGOẠI TUYẾN'}
+              {status.isActive 
+                ? 'ĐANG TẢI LUỒNG VIDEO...' 
+                : (mode === 'OFFLINE' ? 'CAMERA CHƯA KÍCH HOẠT' : 'THÍ SINH NGOẠI TUYẾN')}
             </span>
+            {mode === 'OFFLINE' && !status.isActive && onToggleCamera && (
+              <button
+                onClick={() => onToggleCamera(status.username)}
+                className="mt-2 px-3 py-1 bg-indigo-650 hover:bg-indigo-600 text-indigo-200 hover:text-white rounded font-bold text-[10px] cursor-pointer shadow transition-all border border-indigo-500/20"
+              >
+                Kích hoạt Camera
+              </button>
+            )}
           </div>
         )}
         
@@ -185,6 +197,19 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {mode === 'OFFLINE' && onToggleCamera && (
+            <button
+              onClick={() => onToggleCamera(status.username)}
+              className={`px-2.5 py-1 rounded font-semibold text-[10px] cursor-pointer border transition-all ${
+                status.isActive
+                  ? 'bg-red-950/40 hover:bg-red-950/80 text-red-400 hover:text-red-300 border-red-900/30'
+                  : 'bg-indigo-650/30 hover:bg-indigo-600/40 text-indigo-300 hover:text-white border-indigo-500/20'
+              }`}
+            >
+              {status.isActive ? 'Tắt Cam' : 'Bật Cam'}
+            </button>
+          )}
+
           <button
             onClick={() => onTakeSnapshot(status.username, status.fullName)}
             className="p-1 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded border border-slate-800 cursor-pointer"

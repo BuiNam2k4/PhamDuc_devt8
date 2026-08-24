@@ -79,11 +79,11 @@ class BehaviorAnalyzer:
             result = self._vote_looking_away(window)
             if result:
                 violations.append(result)
-        else:
-            # Chế độ Offline: Kiểm tra quay người ra sau bằng Pose landmarks
-            result = self._vote_turning_around(window)
-            if result:
-                violations.append(result)
+        # else:
+            # Chế độ Offline: Kiểm tra quay người ra sau bằng Pose landmarks (ĐÃ TẮT ở chế độ offline)
+            # result = self._vote_turning_around(window)
+            # if result:
+            #     violations.append(result)
 
         result = self._vote_cheat_sheet(window)
         if result:

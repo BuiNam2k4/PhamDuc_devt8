@@ -1,23 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Volume2,
-  VolumeX,
-  Shield,
-  User,
-  Clock,
-  CheckCircle,
-  VideoOff,
-  RefreshCw,
-  Play,
-  StopCircle,
-  Calendar,
-  Layers,
-  Activity,
-  Camera
-} from 'lucide-react';
+import { VideoOff, Calendar } from 'lucide-react';
 import { examSessionService } from '../services/examSessionService';
 import { ExamSession } from '../types';
 import { CandidateCard, CandidateStatus } from '../components/CandidateCard';
+import { MonitoringSessionSelector } from '../components/MonitoringSessionSelector';
+import { MonitoringMetadata } from '../components/MonitoringMetadata';
 
 const VIOLATION_TRANSLATIONS: Record<string, string> = {
   'phone_detected': 'Sử dụng điện thoại',
@@ -27,8 +14,7 @@ const VIOLATION_TRANSLATIONS: Record<string, string> = {
   'turning_around': 'Quay người ra sau / Quay lưng',
   'multiple_faces': 'Nhiều khuôn mặt',
   'face_not_detected': 'Không phát hiện khuôn mặt',
-  'camera_blocked': 'Camera bị che khuất',
-  'suspicious_object': 'Tài liệu / Vật thể cấm'
+  'camera_blocked': 'Camera bị che khuất'
 };
 
 export default function RealtimeMonitoringPage() {
@@ -40,20 +26,42 @@ export default function RealtimeMonitoringPage() {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [demoMode, setDemoMode] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [fps, setFps] = useState<number>(10);
 
   // Map of candidate username -> candidate status
   const [candidateStatuses, setCandidateStatuses] = useState<Record<string, CandidateStatus>>({});
 
   const wsRef = useRef<WebSocket | null>(null);
 
-  // Room Camera State for Offline Mode
-  const [roomCameraActive, setRoomCameraActive] = useState<boolean>(false);
-  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
-  const roomVideoRef = useRef<HTMLVideoElement | null>(null);
-  const roomCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const roomWsRef = useRef<WebSocket | null>(null);
-  const roomIntervalRef = useRef<any>(null);
-  const roomStreamRef = useRef<MediaStream | null>(null);
+  // Map of active cameras: examSessionCameraId -> { stream, ws, interval, video?, canvas? }
+  const activeCamerasRef = useRef<Record<string, { stream: MediaStream; ws: WebSocket; interval: any; video?: HTMLVideoElement; canvas?: HTMLCanvasElement }>>({});
+
+  // Dynamically update interval of all active cameras when FPS is changed
+  useEffect(() => {
+    const intervalMs = Math.round(1000 / fps);
+    console.log(`Updating active room cameras interval to ${fps} FPS (${intervalMs}ms)`);
+    Object.keys(activeCamerasRef.current).forEach(id => {
+      const active = activeCamerasRef.current[id];
+      if (active && active.video && active.canvas) {
+        clearInterval(active.interval);
+        const { video, canvas, ws } = active;
+        active.interval = setInterval(() => {
+          if (video && canvas && ws && ws.readyState === WebSocket.OPEN) {
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const base64Frame = canvas.toDataURL('image/jpeg', 0.5);
+              ws.send(JSON.stringify({
+                type: 'frame',
+                data: base64Frame,
+                timestamp: Date.now()
+              }));
+            }
+          }
+        }, intervalMs);
+      }
+    });
+  }, [fps]);
 
   // Fetch all exam sessions on mount
   const fetchSessions = async () => {
@@ -68,89 +76,172 @@ export default function RealtimeMonitoringPage() {
     }
   };
 
-  useEffect(() => {
-    if (roomCameraActive && selectedSession && selectedSession.mode === 'OFFLINE' && selectedCameraId) {
-      console.log('Switching stream to exam session camera ID:', selectedCameraId);
-      stopRoomCamera();
-      const timeout = setTimeout(() => {
-        startRoomCamera(selectedCameraId);
-      }, 450);
-      return () => clearTimeout(timeout);
-    }
-  }, [selectedCameraId]);
-
   const startRoomCamera = async (examSessionCameraId: string) => {
     try {
-      console.log('Starting Room Camera for offline proctoring...');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'environment' }
-      });
-      roomStreamRef.current = stream;
-      if (roomVideoRef.current) {
-        roomVideoRef.current.srcObject = stream;
+      console.log('Starting Room Camera:', examSessionCameraId);
+
+      // Get all video input devices to dynamically map different physical webcams
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(d => d.kind === 'videoinput');
+      const activeCount = Object.keys(activeCamerasRef.current).length;
+      const deviceId = videoDevices[activeCount % videoDevices.length]?.deviceId;
+
+      const constraints = deviceId 
+        ? { video: { deviceId: { exact: deviceId }, width: 640, height: 480 } }
+        : { video: { width: 640, height: 480 } };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      // Create hidden capture elements dynamically in DOM
+      const containerId = `capture-container-${examSessionCameraId}`;
+      let container = document.getElementById(containerId);
+      if (!container) {
+        container = document.createElement('div');
+        container.id = containerId;
+        container.style.display = 'none';
+        document.body.appendChild(container);
       }
-      setRoomCameraActive(true);
+
+      const video = document.createElement('video');
+      video.autoplay = true;
+      video.playsInline = true;
+      video.muted = true;
+      video.srcObject = stream;
+      container.appendChild(video);
+      await video.play().catch(() => {});
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 480;
+      container.appendChild(canvas);
 
       // Connect to AI WebSocket
       const wsUrl = `ws://localhost:8000/ws/${examSessionCameraId}_admin`;
       console.log('Connecting Admin Room Camera to AI WS:', wsUrl);
       const ws = new WebSocket(wsUrl);
-      roomWsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('Room Camera WS Connected.');
+        console.log(`Room Camera ${examSessionCameraId} WS Connected.`);
       };
       ws.onclose = () => {
-        console.log('Room Camera WS Closed.');
+        console.log(`Room Camera ${examSessionCameraId} WS Closed.`);
       };
       ws.onerror = (err) => {
-        console.error('Room Camera WS Error:', err);
+        console.error(`Room Camera ${examSessionCameraId} WS Error:`, err);
       };
 
       // Loop to send frames to AI backend
-      const intervalMs = Math.round(1000 / 10); // 10 FPS
-      roomIntervalRef.current = setInterval(() => {
-        const video = roomVideoRef.current;
-        const canvas = roomCanvasRef.current;
-        const activeWs = roomWsRef.current;
-
-        if (video && canvas && activeWs && activeWs.readyState === WebSocket.OPEN) {
+      const intervalMs = Math.round(1000 / fps);
+      const interval = setInterval(() => {
+        if (video && canvas && ws && ws.readyState === WebSocket.OPEN) {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const base64Frame = canvas.toDataURL('image/jpeg', 0.5);
-            activeWs.send(JSON.stringify({
-              frame: base64Frame,
+            ws.send(JSON.stringify({
+              type: 'frame',
+              data: base64Frame,
               timestamp: Date.now()
             }));
           }
         }
       }, intervalMs);
 
+      // Save to active cameras map including video and canvas elements for dynamic FPS updates
+      activeCamerasRef.current[examSessionCameraId] = { stream, ws, interval, video, canvas };
+
+      // Update UI state
+      setCandidateStatuses(prev => {
+        const current = prev[examSessionCameraId];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [examSessionCameraId]: {
+            ...current,
+            isActive: true,
+            lastActiveTime: Date.now(),
+            logs: [
+              {
+                id: Date.now().toString(),
+                time: new Date().toLocaleTimeString(),
+                message: 'Camera phòng thi đã được kết nối và kích hoạt.',
+                isViolation: false,
+                severity: 'LOW' as const
+              },
+              ...current.logs
+            ].slice(0, 20)
+          }
+        };
+      });
+
     } catch (err) {
       console.error('Failed to start Room Camera:', err);
-      alert('Không thể mở camera. Vui lòng kiểm tra quyền truy cập camera.');
+      alert('Không thể mở camera. Vui lòng kiểm tra thiết bị hoặc quyền truy cập camera.');
     }
   };
 
-  const stopRoomCamera = () => {
-    console.log('Stopping Room Camera...');
-    if (roomIntervalRef.current) {
-      clearInterval(roomIntervalRef.current);
-      roomIntervalRef.current = null;
+  const stopRoomCamera = (examSessionCameraId: string) => {
+    console.log('Stopping Room Camera:', examSessionCameraId);
+    const active = activeCamerasRef.current[examSessionCameraId];
+    if (active) {
+      clearInterval(active.interval);
+      active.ws.close();
+      active.stream.getTracks().forEach(track => track.stop());
+      delete activeCamerasRef.current[examSessionCameraId];
     }
-    if (roomWsRef.current) {
-      roomWsRef.current.close();
-      roomWsRef.current = null;
+
+    const container = document.getElementById(`capture-container-${examSessionCameraId}`);
+    if (container) {
+      container.remove();
     }
-    if (roomStreamRef.current) {
-      roomStreamRef.current.getTracks().forEach(track => track.stop());
-      roomStreamRef.current = null;
+
+    setCandidateStatuses(prev => {
+      const current = prev[examSessionCameraId];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [examSessionCameraId]: {
+          ...current,
+          isActive: false,
+          logs: [
+            {
+              id: Date.now().toString(),
+              time: new Date().toLocaleTimeString(),
+              message: 'Camera phòng thi đã ngắt kết nối.',
+              isViolation: false,
+              severity: 'LOW' as const
+            },
+            ...current.logs
+          ].slice(0, 20)
+        }
+      };
+    });
+  };
+
+  const stopAllRoomCameras = () => {
+    console.log('Stopping all Room Cameras...');
+    Object.keys(activeCamerasRef.current).forEach(id => {
+      const active = activeCamerasRef.current[id];
+      if (active) {
+        clearInterval(active.interval);
+        active.ws.close();
+        active.stream.getTracks().forEach(track => track.stop());
+      }
+      const container = document.getElementById(`capture-container-${id}`);
+      if (container) {
+        container.remove();
+      }
+    });
+    activeCamerasRef.current = {};
+  };
+
+  const toggleRoomCamera = (examSessionCameraId: string) => {
+    const active = activeCamerasRef.current[examSessionCameraId];
+    if (active) {
+      stopRoomCamera(examSessionCameraId);
+    } else {
+      startRoomCamera(examSessionCameraId);
     }
-    if (roomVideoRef.current) {
-      roomVideoRef.current.srcObject = null;
-    }
-    setRoomCameraActive(false);
   };
 
   useEffect(() => {
@@ -209,7 +300,7 @@ export default function RealtimeMonitoringPage() {
       active = false;
       if (ws) ws.close();
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      stopRoomCamera();
+      stopAllRoomCameras();
     };
   }, [soundEnabled]); // Rebind handleIncomingData with latest soundEnabled state
 
@@ -224,8 +315,9 @@ export default function RealtimeMonitoringPage() {
     const examSessionCameraId = parts[0];
     const username = parts[1];
 
-    // In offline mode, the status key is the camera's ID. In online mode, it is the student username.
-    const key = selectedSession?.mode === 'OFFLINE' ? examSessionCameraId : username;
+    // In offline mode, the status key is the camera's ID (since username is 'admin').
+    // In online mode, it is the student's username.
+    const key = username === 'admin' ? examSessionCameraId : username;
 
     setCandidateStatuses(prev => {
       const current = prev[key];
@@ -341,7 +433,7 @@ export default function RealtimeMonitoringPage() {
     const id = e.target.value;
     setSelectedSessionId(id);
     setDemoMode(false);
-    stopRoomCamera();
+    stopAllRoomCameras();
 
     if (!id) {
       setSelectedSession(null);
@@ -384,7 +476,6 @@ export default function RealtimeMonitoringPage() {
               ]
             };
           });
-          setSelectedCameraId(session.examSessionCameras[0].id);
         } else {
           // Fallback if no cameras defined in DB
           initialStatuses['room-camera'] = {
@@ -410,7 +501,6 @@ export default function RealtimeMonitoringPage() {
               }
             ]
           };
-          setSelectedCameraId('room-camera');
         }
       } else {
         // Online Mode: Individual student proctoring
@@ -543,119 +633,21 @@ export default function RealtimeMonitoringPage() {
 
   return (
     <div className="space-y-6 pb-16">
-
       {/* Top Banner and Ca thi Selector */}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center shadow shadow-indigo-500/20">
-                <Shield className="w-5 h-5 text-white" />
-              </div>
-              <h1 className="text-lg font-bold text-white uppercase tracking-wide">Giám Sát Ca Thi Thời Gian Thực</h1>
-            </div>
-            <p className="text-xs text-slate-400">
-              Vui lòng chọn ca thi đã lên lịch để quản lý thiết bị camera và nhật ký hành vi của từng thí sinh.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            {/* WS Status Badge */}
-            <div className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 ${isConnected
-                ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/30'
-                : 'bg-amber-950/40 text-amber-400 border-amber-500/30 animate-pulse'
-              }`}>
-              <Activity className="w-3.5 h-3.5" />
-              AI Connection: {isConnected ? 'Đang hoạt động' : 'Đang kết nối lại'}
-            </div>
-
-            {/* Sound alert switch */}
-            <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-2 border transition-all cursor-pointer ${soundEnabled
-                  ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/40'
-                  : 'bg-slate-900 text-slate-400 border-slate-800'
-                }`}
-            >
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-cyan-400" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
-              <span>{soundEnabled ? 'Âm báo: Bật' : 'Âm báo: Tắt'}</span>
-            </button>
-
-            {/* Demo mode switch */}
-            {selectedSession && (
-              <button
-                onClick={() => setDemoMode(!demoMode)}
-                className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-2 border transition-all cursor-pointer ${demoMode
-                    ? 'bg-amber-600/20 text-amber-300 border-amber-500/40 animate-pulse'
-                    : 'bg-slate-900 text-slate-400 border-slate-800'
-                  }`}
-              >
-                {demoMode ? <StopCircle className="w-4 h-4 text-amber-400" /> : <Play className="w-4 h-4 text-slate-400" />}
-                <span>{demoMode ? 'Chế độ Demo: Đang chạy' : 'Chạy mô phỏng (Demo)'}</span>
-              </button>
-            )}
-
-            {/* Camera Selector for Offline Mode */}
-            {selectedSession && selectedSession.mode === 'OFFLINE' && selectedSession.examSessionCameras && selectedSession.examSessionCameras.length > 0 && (
-              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-2 py-1">
-                <span className="text-[10px] text-slate-500 font-bold uppercase pl-1">Vị trí Camera:</span>
-                <select
-                  value={selectedCameraId}
-                  onChange={(e) => setSelectedCameraId(e.target.value)}
-                  className="bg-transparent border-0 text-slate-300 text-[11px] font-bold outline-none cursor-pointer pr-4 py-0.5"
-                >
-                  {selectedSession.examSessionCameras.map((esc) => (
-                    <option key={esc.id} value={esc.id} className="bg-slate-950 text-slate-300">
-                      {esc.camera?.name || `Camera ${esc.id.slice(0, 5)}...`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Room Camera Switch for Offline Mode */}
-            {selectedSession && selectedSession.mode === 'OFFLINE' && (
-              <button
-                onClick={() => {
-                  if (roomCameraActive) {
-                    stopRoomCamera();
-                  } else {
-                    startRoomCamera(selectedCameraId || selectedSession.examSessionCameraId || 'room-camera');
-                  }
-                }}
-                className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-2 border transition-all cursor-pointer ${roomCameraActive
-                    ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 animate-pulse'
-                    : 'bg-indigo-600/20 text-indigo-300 border-indigo-500/40'
-                  }`}
-              >
-                <Camera className="w-4 h-4 text-cyan-400" />
-                <span>{roomCameraActive ? 'Tắt Camera Phòng Thi' : 'Kích hoạt Camera Phòng'}</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Dropdown Ca Thi */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center border-t border-slate-850 pt-5">
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0">Chọn ca thi cần giám sát:</label>
-          <div className="relative w-full sm:max-w-md">
-            <select
-              value={selectedSessionId}
-              onChange={handleSessionChange}
-              disabled={loadingSessions}
-              className="w-full bg-slate-950 text-slate-200 border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
-            >
-              <option value="">-- Click chọn ca thi --</option>
-              {sessions.map((session) => (
-                <option key={session.id} value={session.id}>
-                  [{session.subject?.subjectCode}] {session.subject?.name} - {session.mode} (Ngày {session.startTime ? new Date(session.startTime).toLocaleDateString() : 'N/A'})
-                </option>
-              ))}
-            </select>
-          </div>
-          {loadingSessions && <RefreshCw className="w-4 h-4 text-cyan-400 animate-spin" />}
-        </div>
-      </div>
+      <MonitoringSessionSelector
+        sessions={sessions}
+        selectedSessionId={selectedSessionId}
+        selectedSession={selectedSession}
+        loadingSessions={loadingSessions}
+        isConnected={isConnected}
+        soundEnabled={soundEnabled}
+        demoMode={demoMode}
+        fps={fps}
+        setSoundEnabled={setSoundEnabled}
+        setDemoMode={setDemoMode}
+        setFps={setFps}
+        onSessionChange={handleSessionChange}
+      />
 
       {/* Main Area: Candidate Grid */}
       {!selectedSession ? (
@@ -675,44 +667,7 @@ export default function RealtimeMonitoringPage() {
         // Session Selected: Render Candidate Grid
         <div className="space-y-6">
           {/* Selected Session Metadata Info */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="glass-panel p-3.5 rounded-xl border border-slate-800/60 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400">
-                <Layers className="w-4.5 h-4.5" />
-              </div>
-              <div className="text-xs leading-none space-y-1">
-                <span className="text-[10px] text-slate-500 block uppercase font-bold">Môn Thi</span>
-                <span className="font-semibold text-slate-200">{selectedSession.subject?.name}</span>
-              </div>
-            </div>
-            <div className="glass-panel p-3.5 rounded-xl border border-slate-800/60 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                <Clock className="w-4.5 h-4.5" />
-              </div>
-              <div className="text-xs leading-none space-y-1">
-                <span className="text-[10px] text-slate-500 block uppercase font-bold">Thời Lượng</span>
-                <span className="font-semibold text-slate-200">{selectedSession.duration} phút</span>
-              </div>
-            </div>
-            <div className="glass-panel p-3.5 rounded-xl border border-slate-800/60 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                <CheckCircle className="w-4.5 h-4.5" />
-              </div>
-              <div className="text-xs leading-none space-y-1">
-                <span className="text-[10px] text-slate-500 block uppercase font-bold">Hình thức</span>
-                <span className="font-semibold text-slate-200 capitalize">{selectedSession.mode}</span>
-              </div>
-            </div>
-            <div className="glass-panel p-3.5 rounded-xl border border-slate-800/60 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
-                <User className="w-4.5 h-4.5" />
-              </div>
-              <div className="text-xs leading-none space-y-1">
-                <span className="text-[10px] text-slate-500 block uppercase font-bold">Thí sinh</span>
-                <span className="font-semibold text-slate-200">{selectedSession.examSessionDetails?.length || 0} Học viên</span>
-              </div>
-            </div>
-          </div>
+          <MonitoringMetadata selectedSession={selectedSession} />
 
           {/* Grid of Candidate Monitor Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -725,6 +680,7 @@ export default function RealtimeMonitoringPage() {
                   onClearAlert={clearAlert}
                   onTakeSnapshot={(uname, fname) => alert(`Chụp ảnh bằng chứng cho thí sinh: ${fname}`)}
                   mode={selectedSession?.mode}
+                  onToggleCamera={toggleRoomCamera}
                 />
               );
             })}
@@ -739,10 +695,6 @@ export default function RealtimeMonitoringPage() {
           )}
         </div>
       )}
-
-      {/* Hidden elements for capturing room camera in offline mode */}
-      <video ref={roomVideoRef} style={{ display: 'none' }} autoPlay playsInline muted />
-      <canvas ref={roomCanvasRef} style={{ display: 'none' }} width={640} height={480} />
     </div>
   );
 }

@@ -84,6 +84,7 @@ export default function UserPage() {
   const [examJoined, setExamJoined] = useState(false);
   const [activeExamSession, setActiveExamSession] = useState<ExamSession | null>(null);
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
+  const [fps, setFps] = useState<number>(10);
   // Mock quiz answers
   const [answers, setAnswers] = useState<Record<number, string>>({});
   
@@ -120,6 +121,53 @@ export default function UserPage() {
       if (examStreamRef.current) examStreamRef.current.getTracks().forEach(track => track.stop());
     };
   }, []);
+
+  // Frame capture loop controlled by active exam connection and FPS setting
+  useEffect(() => {
+    if (!examJoined || wsStatus !== 'connected' || !examWsRef.current) {
+      if (examSendLoopRef.current) {
+        clearInterval(examSendLoopRef.current);
+        examSendLoopRef.current = null;
+      }
+      return;
+    }
+
+    if (examSendLoopRef.current) {
+      clearInterval(examSendLoopRef.current);
+    }
+
+    const intervalMs = Math.round(1000 / fps);
+    console.log(`Starting frame send loop at ${fps} FPS (${intervalMs}ms)`);
+
+    examSendLoopRef.current = setInterval(() => {
+      const video = examVideoRef.current;
+      const canvas = examCanvasRef.current;
+      const activeWs = examWsRef.current;
+
+      if (!video || !canvas || !activeWs || activeWs.readyState !== WebSocket.OPEN) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const base64Data = canvas.toDataURL('image/jpeg', 0.6);
+
+      const payload = {
+        type: 'frame',
+        data: base64Data,
+        timestamp: Date.now()
+      };
+
+      activeWs.send(JSON.stringify(payload));
+    }, intervalMs);
+
+    return () => {
+      if (examSendLoopRef.current) {
+        clearInterval(examSendLoopRef.current);
+        examSendLoopRef.current = null;
+      }
+    };
+  }, [examJoined, wsStatus, fps]);
 
   const startCamera = async () => {
     setCameraError(null);
@@ -217,30 +265,6 @@ export default function UserPage() {
       ws.onerror = (err) => {
         console.error('Exam WS Error:', err);
       };
-      
-      // Start loop to capture and send frames at 10 FPS
-      const intervalMs = Math.round(1000 / 10);
-      examSendLoopRef.current = setInterval(() => {
-        const video = examVideoRef.current;
-        const canvas = examCanvasRef.current;
-        const activeWs = examWsRef.current;
-        
-        if (!video || !canvas || !activeWs || activeWs.readyState !== WebSocket.OPEN) return;
-        
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const base64Data = canvas.toDataURL('image/jpeg', 0.6);
-        
-        const payload = {
-          type: 'frame',
-          data: base64Data,
-          timestamp: Date.now()
-        };
-        
-        activeWs.send(JSON.stringify(payload));
-      }, intervalMs);
       
     } catch (err) {
       console.error('Failed to start camera or WS for exam:', err);
@@ -381,7 +405,7 @@ export default function UserPage() {
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <Video className="w-4 h-4 text-indigo-400 animate-pulse" /> Camera Giám Sát
                 </h3>
-                <span className="text-[10px] text-cyan-400 font-mono">10 FPS (640x480)</span>
+                <span className="text-[10px] text-cyan-400 font-mono">{fps} FPS (640x480)</span>
               </div>
 
               <div className="relative aspect-video rounded-xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center">
@@ -393,6 +417,25 @@ export default function UserPage() {
                   className="w-full h-full object-cover"
                 />
                 <canvas ref={examCanvasRef} width={640} height={480} className="hidden" />
+              </div>
+
+              <div className="flex items-center justify-between border-t border-slate-800/60 pt-3">
+                <span className="text-[10px] text-slate-400 font-medium">Tần suất gửi ảnh (FPS):</span>
+                <div className="flex gap-1.5">
+                  {[3, 5, 10, 15].map((val) => (
+                    <button
+                      key={val}
+                      onClick={() => setFps(val)}
+                      className={`px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono transition-all border cursor-pointer ${
+                        fps === val
+                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                          : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-300'
+                      }`}
+                    >
+                      {val}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="p-3.5 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-300 text-xs flex items-start gap-2.5">
