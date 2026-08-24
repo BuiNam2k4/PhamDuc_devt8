@@ -30,14 +30,13 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { path: '/admin', label: 'Tổng quan Hệ thống', icon: LayoutDashboard, badge: null },
   { path: '/admin/realtime', label: 'Giám sát Camera Live', icon: Video, badge: 'LIVE' },
-  { path: '/admin/camera-test', label: 'Thử nghiệm AI Cam', icon: Camera, badge: 'TEST' },
-  // { path: '/admin/offline', label: 'Phân tích Video Off', icon: FileVideo, badge: null },
   { path: '/admin/logs', label: 'Nhật ký Vi phạm', icon: AlertTriangle, badge: 'LOGS' },
   { path: '/admin/models', label: 'Quản lý Mô hình AI', icon: Cpu, badge: 'HOT' },
 ];
 
 const managementNavItems: NavItem[] = [
   { path: '/admin/exam-sessions', label: 'Quản lý Ca Thi', icon: Calendar, badge: null },
+  { path: '/admin/cameras', label: 'Quản lý Camera', icon: Camera, badge: null },
   { path: '/admin/students', label: 'Quản lý Thí Sinh', icon: Users, badge: null },
   { path: '/admin/subjects', label: 'Quản lý Môn Học', icon: BookOpen, badge: null },
   { path: '/admin/rooms', label: 'Quản lý Phòng Thi', icon: Building, badge: null },

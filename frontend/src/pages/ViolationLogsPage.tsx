@@ -173,7 +173,7 @@ export default function ViolationLogsPage() {
             </div>
 
             {/* Simulated Bounding Box Snapshot */}
-            <div className="relative aspect-video bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+            <div className="relative aspect-[4/3] bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
               <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center">
                 <div className="p-3 rounded-xl border-2 border-red-500 bg-red-500/20 text-center animate-alert-border max-w-xs">
                   <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-1" />

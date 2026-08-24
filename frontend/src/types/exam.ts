@@ -27,6 +27,8 @@ export interface ExamSession {
   subject?: Subject;
   model?: Model;
   examSessionDetails?: ExamSessionDetail[];
+  examSessionCameraId?: string;
+  examSessionCameras?: ExamSessionCamera[];
 }
 
 export interface ExamSessionDetail {
@@ -53,6 +55,7 @@ export interface ExamSessionCreationRequest {
   subjectId: string;
   modelId?: string;
   studentIds?: string[];
+  cameraIds?: string[];
 }
 
 export interface ExamSessionUpdateRequest {
@@ -62,4 +65,5 @@ export interface ExamSessionUpdateRequest {
   roomId?: string;
   subjectId?: string;
   modelId?: string;
+  cameraIds?: string[];
 }

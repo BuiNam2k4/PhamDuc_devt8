@@ -108,3 +108,4 @@ cd AI
 | **FastAPI AI Server** | `http://localhost:8000` | Động cơ phân tích hình ảnh AI |
 | **AI WebSocket** | `ws://localhost:8000/ws` | Nhận base64 frame từ Client |
 | **MySQL Database** | `localhost:3306` | CSDL quản lý sinh viên/ca thi |
+

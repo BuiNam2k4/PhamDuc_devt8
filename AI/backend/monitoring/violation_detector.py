@@ -152,7 +152,7 @@ class ViolationDetector:
         
         phones = [obj for obj in objects if obj['class_name'] == 'cell phone']
         extra_persons = [obj for obj in objects if obj['class_name'] == 'person']
-        books = [obj for obj in objects if obj['class_name'] == 'book']
+        # books = [obj for obj in objects if obj['class_name'] == 'book']
         
         if phones:
             violations.append({
@@ -171,14 +171,14 @@ class ViolationDetector:
         #         }
         #     })
         
-        if books:
-            violations.append({
-                'type': 'suspicious_object',
-                'details': {
-                    'object_type': 'book',
-                    'count': len(books)
-                }
-            })
+        # if books:
+        #     violations.append({
+        #         'type': 'suspicious_object',
+        #         'details': {
+        #             'object_type': 'book',
+        #             'count': len(books)
+        #         }
+        #     })
         
         return violations
     

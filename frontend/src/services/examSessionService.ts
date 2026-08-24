@@ -1,6 +1,7 @@
 import { fetchApi } from './apiClient';
 import { ExamSession, ExamSessionCreationRequest, ExamSessionUpdateRequest } from '../types';
 
+
 export const examSessionService = {
   getAll: () => fetchApi<ExamSession[]>('/exam-sessions'),
   getById: (id: string) => fetchApi<ExamSession>(`/exam-sessions/${id}`),

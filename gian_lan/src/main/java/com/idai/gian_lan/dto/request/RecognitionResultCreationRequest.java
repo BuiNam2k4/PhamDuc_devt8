@@ -26,6 +26,8 @@ public class RecognitionResultCreationRequest {
 
     String modelId;
 
+    String studentUsername;
+
     @NotBlank(message = "Exam session camera ID cannot be blank")
     String examSessionCameraId;
 }

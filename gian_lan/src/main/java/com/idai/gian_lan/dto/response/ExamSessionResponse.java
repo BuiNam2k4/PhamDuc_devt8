@@ -26,4 +26,6 @@ public class ExamSessionResponse {
     SubjectResponse subject;
     ModelResponse model;
     List<ExamSessionDetailResponse> examSessionDetails;
+    String examSessionCameraId;
+    List<ExamSessionCameraResponse> examSessionCameras;
 }

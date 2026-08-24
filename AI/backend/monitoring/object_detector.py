@@ -41,7 +41,8 @@ class ObjectDetector:
         try:
             # Dùng model.track() thay vì model() để bật ByteTrack
             # persist=True: giữ track_id ổn định giữa các frame liên tiếp
-            results = self.model.track(frame, persist=True, verbose=False)
+            # tracker="bytetrack.yaml": chuyển sang ByteTrack để tránh cảnh báo GMC và tăng tốc độ
+            results = self.model.track(frame, persist=True, tracker="bytetrack.yaml", verbose=False)
             detected_objects = []
             
             for result in results:

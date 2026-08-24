@@ -9,8 +9,12 @@ import com.idai.gian_lan.exception.AppException;
 import com.idai.gian_lan.exception.ErrorCode;
 import com.idai.gian_lan.mapper.RecognitionResultMapper;
 import com.idai.gian_lan.repository.ExamSessionCameraRepository;
+import com.idai.gian_lan.repository.ExamSessionRepository;
+import com.idai.gian_lan.entity.ExamSession;
 import com.idai.gian_lan.repository.ModelRepository;
 import com.idai.gian_lan.repository.RecognitionResultRepository;
+import com.idai.gian_lan.repository.StudentRepository;
+import com.idai.gian_lan.entity.Student;
 import com.idai.gian_lan.service.RecognitionResultService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +32,8 @@ public class RecognitionResultServiceImpl implements RecognitionResultService {
 
     RecognitionResultRepository recognitionResultRepository;
     ExamSessionCameraRepository examSessionCameraRepository;
+    ExamSessionRepository examSessionRepository;
+    StudentRepository studentRepository;
     ModelRepository modelRepository;
     RecognitionResultMapper recognitionResultMapper;
 
@@ -35,7 +41,16 @@ public class RecognitionResultServiceImpl implements RecognitionResultService {
     @Transactional
     public RecognitionResultResponse saveResult(RecognitionResultCreationRequest request) {
         ExamSessionCamera examSessionCamera = examSessionCameraRepository.findById(request.getExamSessionCameraId())
-                .orElseThrow(() -> new AppException(ErrorCode.EXAM_SESSION_CAMERA_NOT_EXISTED));
+                .orElse(null);
+
+        ExamSession examSession = null;
+        if (examSessionCamera != null) {
+            examSession = examSessionCamera.getExamSession();
+        } else {
+            // Fallback: If no camera found, check if the ID refers directly to an ExamSession (e.g. online exam)
+            examSession = examSessionRepository.findById(request.getExamSessionCameraId())
+                    .orElseThrow(() -> new AppException(ErrorCode.EXAM_SESSION_NOT_EXISTED));
+        }
 
         Model model = null;
         if (request.getModelId() != null && !request.getModelId().isBlank()) {
@@ -43,9 +58,16 @@ public class RecognitionResultServiceImpl implements RecognitionResultService {
                     .orElseThrow(() -> new AppException(ErrorCode.MODEL_NOT_EXISTED));
         }
 
+        Student student = null;
+        if (request.getStudentUsername() != null && !request.getStudentUsername().isBlank()) {
+            student = studentRepository.findByUsername(request.getStudentUsername()).orElse(null);
+        }
+
         RecognitionResult recognitionResult = recognitionResultMapper.toRecognitionResult(request);
         recognitionResult.setExamSessionCamera(examSessionCamera);
+        recognitionResult.setExamSession(examSession);
         recognitionResult.setModel(model);
+        recognitionResult.setStudent(student);
 
         if (recognitionResult.getDetectionTime() == null || recognitionResult.getDetectionTime().isBlank()) {
             recognitionResult.setDetectionTime(java.time.LocalDateTime.now().toString());

@@ -21,6 +21,7 @@ public interface ExamSessionMapper {
     @Mapping(target = "examSessionDetails", ignore = true)
     ExamSession toExamSession(ExamSessionCreationRequest request);
 
+    @Mapping(target = "examSessionCameraId", ignore = true)
     ExamSessionResponse toExamSessionResponse(ExamSession examSession);
 
     ExamSessionDetailResponse toExamSessionDetailResponse(ExamSessionDetail examSessionDetail);
