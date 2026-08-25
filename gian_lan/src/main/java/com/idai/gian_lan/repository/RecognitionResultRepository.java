@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface RecognitionResultRepository extends JpaRepository<RecognitionResult, String> {
-    List<RecognitionResult> findByExamSessionCamera_ExamSession_Id(String examSessionId);
+    List<RecognitionResult> findByExamSession_Id(String examSessionId);
 }

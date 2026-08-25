@@ -86,7 +86,7 @@ public class RecognitionResultServiceImpl implements RecognitionResultService {
 
     @Override
     public List<RecognitionResultResponse> getResultsByExamSession(String examSessionId) {
-        return recognitionResultRepository.findByExamSessionCamera_ExamSession_Id(examSessionId).stream()
+        return recognitionResultRepository.findByExamSession_Id(examSessionId).stream()
                 .map(recognitionResultMapper::toRecognitionResultResponse)
                 .collect(Collectors.toList());
     }

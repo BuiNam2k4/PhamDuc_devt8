@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from monitoring.face_detector import FaceDetectorWrapper
 from monitoring.head_pose_estimator import HeadPoseEstimator
@@ -61,6 +62,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+app.mount("/evidence", StaticFiles(directory=EVIDENCE_DIR), name="evidence")
 
 # Enable CORS for React Frontend (3000/5173) & Spring Boot Backend (8080)
 app.add_middleware(
@@ -415,95 +418,94 @@ async def process_frame(
                     }
                     for v in violations
                 ]
-            # try:
-            #     dt_obj = datetime.fromtimestamp(timestamp / 1000)
-            #     time_str = dt_obj.strftime("%Y%m%d_%H%M%S")
-            #     violation_type = violations[0]["type"]
-            #     v_source = violations[0].get('source', 'unknown')
-            #     filename = f"evidence_{time_str}_{violation_type}_{v_source}.jpg"
-            #     filepath = os.path.join(EVIDENCE_DIR, filename)
-            #     
-            #     # Draw boxes/info/skeleton on frame copy
-            #     annotated_frame = frame.copy()
-            #     fh, fw = frame.shape[:2]
-            #     
-            #     # Draw skeletons/poses
-            #     annotated_frame = pose_detector.draw_poses(annotated_frame, body_poses)
-            #     
-            #     # Draw faces
-            #     for face in faces:
-            #         x, y, w, h = face['bbox']
-            #         x = max(0, min(x, fw - 1))
-            #         y = max(0, min(y, fh - 1))
-            #         w = max(1, min(w, fw - x))
-            #         h = max(1, min(h, fh - y))
-            #         cv2.rectangle(annotated_frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-            #         cv2.putText(annotated_frame, f"Face: {face['confidence']:.2f}", (x, y - 5), 
-            #                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-            #     
-            #     # Draw objects
-            #     for obj in objects:
-            #         ox, oy, ow, oh = obj['bbox']
-            #         ox = max(0, min(ox, fw - 1))
-            #         oy = max(0, min(oy, fh - 1))
-            #         ow = max(1, min(ow, fw - ox))
-            #         oh = max(1, min(oh, fh - oy))
-            #         color = (0, 0, 255) if obj['class_name'] in ['cell phone', 'book'] else (0, 255, 0)
-            #         cv2.rectangle(annotated_frame, (ox, oy), (ox + ow, oy + oh), color, 2)
-            #         cv2.putText(annotated_frame, f"{obj['class_name']}: {obj['confidence']:.2f}", (ox, oy - 5), 
-            #                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-            #     
-            #     # Draw Head Pose Info
-            #     pose_text = f"Yaw: {head_yaw:.1f} Pitch: {head_pitch:.1f} Roll: {head_roll:.1f}"
-            #     cv2.putText(annotated_frame, pose_text, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
-            #     
-            #     # Draw violation label on top right
-            #     violation_label = f"VIOLATION: {violation_type.upper()}"
-            #     cv2.putText(annotated_frame, violation_label, (annotated_frame.shape[1] - 300, 25), 
-            #                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-            #     
-            #     # Write file
-            #     cv2.imwrite(filepath, annotated_frame)
-            #     logger.info(f"📸 Saved evidence image: {filepath}")
-            #     
-            #     # === BƯỚC 6: Gửi vi phạm lên Spring Boot (fire-and-forget) ===
-            #     async def _send_to_spring_boot(v, fp):
-            #         try:
-            #             clean_camera_id = session_id.split("_")[0] if session_id else None
-            #             is_custom_id = False
-            #             if clean_camera_id and not clean_camera_id.startswith("session_"):
-            #                 is_custom_id = True
-            #                 
-            #             parts = session_id.split("_") if session_id else []
-            #             student_username = parts[1] if len(parts) > 1 else None
-            # 
-            #             detail_text = spring_boot_client.build_detail_text(v)
-            #             result = await spring_boot_client.send_violation(
-            #                 violation_type=v['type'],
-            #                 confidence=v.get('confidence', 1.0),
-            #                 detail=detail_text,
-            #                 image_path=fp,
-            #                 detection_time=datetime.fromtimestamp(
-            #                     timestamp / 1000
-            #                 ).strftime('%Y-%m-%d %H:%M:%S'),
-            #                 exam_session_camera_id=clean_camera_id if is_custom_id else None,
-            #                 student_username=None if student_username == 'admin' else student_username
-            #             )
-            #             if result['success']:
-            #                 logger.info(f"📤 Vi phạm đã ghi vào DB Spring Boot")
-            #             else:
-            #                 logger.warning(
-            #                     f"⚠️ Không gửi được vi phạm lên Spring Boot: "
-            #                     f"{result['error']}"
-            #                 )
-            #         except Exception as api_err:
-            #             logger.error(f"❌ Lỗi gọi Spring Boot API: {api_err}")
-            #     
-            #     logger.error(f"Error saving evidence image: {save_err}")
-            #     asyncio.create_task(_send_to_spring_boot(violations[0], filepath))
-            #     
-            # except Exception as save_err:
-            #     logger.error(f"Error saving evidence image: {save_err}")
+            try:
+                dt_obj = datetime.fromtimestamp(timestamp / 1000)
+                time_str = dt_obj.strftime("%Y%m%d_%H%M%S")
+                violation_type = violations[0]["type"]
+                v_source = violations[0].get('source', 'unknown')
+                filename = f"evidence_{time_str}_{violation_type}_{v_source}.jpg"
+                filepath = os.path.join(EVIDENCE_DIR, filename)
+                
+                # Draw boxes/info/skeleton on frame copy
+                annotated_frame = frame.copy()
+                fh, fw = frame.shape[:2]
+                
+                # Draw skeletons/poses
+                annotated_frame = pose_detector.draw_poses(annotated_frame, body_poses)
+                
+                # Draw faces
+                for face in faces:
+                    x, y, w, h = face['bbox']
+                    x = max(0, min(x, fw - 1))
+                    y = max(0, min(y, fh - 1))
+                    w = max(1, min(w, fw - x))
+                    h = max(1, min(h, fh - y))
+                    cv2.rectangle(annotated_frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                    cv2.putText(annotated_frame, f"Face: {face['confidence']:.2f}", (x, y - 5), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                
+                # Draw objects
+                for obj in objects:
+                    ox, oy, ow, oh = obj['bbox']
+                    ox = max(0, min(ox, fw - 1))
+                    oy = max(0, min(oy, fh - 1))
+                    ow = max(1, min(ow, fw - ox))
+                    oh = max(1, min(oh, fh - oy))
+                    color = (0, 0, 255) if obj['class_name'] in ['cell phone', 'book'] else (0, 255, 0)
+                    cv2.rectangle(annotated_frame, (ox, oy), (ox + ow, oy + oh), color, 2)
+                    cv2.putText(annotated_frame, f"{obj['class_name']}: {obj['confidence']:.2f}", (ox, oy - 5), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+                
+                # Draw Head Pose Info
+                pose_text = f"Yaw: {head_yaw:.1f} Pitch: {head_pitch:.1f} Roll: {head_roll:.1f}"
+                cv2.putText(annotated_frame, pose_text, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+                
+                # Draw violation label on top right
+                violation_label = f"VIOLATION: {violation_type.upper()}"
+                cv2.putText(annotated_frame, violation_label, (annotated_frame.shape[1] - 300, 25), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                
+                # Write file
+                cv2.imwrite(filepath, annotated_frame)
+                logger.info(f"📸 Saved evidence image: {filepath}")
+                
+                # === BƯỚC 6: Gửi vi phạm lên Spring Boot (fire-and-forget) ===
+                async def _send_to_spring_boot(v, fp):
+                    try:
+                        clean_camera_id = session_id.split("_")[0] if session_id else None
+                        is_custom_id = False
+                        if clean_camera_id and not clean_camera_id.startswith("session_"):
+                            is_custom_id = True
+                            
+                        parts = session_id.split("_") if session_id else []
+                        student_username = parts[1] if len(parts) > 1 else None
+
+                        detail_text = spring_boot_client.build_detail_text(v)
+                        result = await spring_boot_client.send_violation(
+                            violation_type=v['type'],
+                            confidence=v.get('confidence', 1.0),
+                            detail=detail_text,
+                            image_path=fp,
+                            detection_time=datetime.fromtimestamp(
+                                timestamp / 1000
+                            ).strftime('%Y-%m-%d %H:%M:%S'),
+                            exam_session_camera_id=clean_camera_id if is_custom_id else None,
+                            student_username=None if student_username == 'admin' else student_username
+                        )
+                        if result['success']:
+                            logger.info(f"📤 Vi phạm đã ghi vào DB Spring Boot")
+                        else:
+                            logger.warning(
+                                f"⚠️ Không gửi được vi phạm lên Spring Boot: "
+                                f"{result['error']}"
+                            )
+                    except Exception as api_err:
+                        logger.error(f"❌ Lỗi gọi Spring Boot API: {api_err}")
+                
+                asyncio.create_task(_send_to_spring_boot(violations[0], filepath))
+                
+            except Exception as save_err:
+                logger.error(f"Error saving evidence image: {save_err}")
         
         return response
         

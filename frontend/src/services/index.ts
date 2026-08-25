@@ -6,3 +6,4 @@ export * from './modelService';
 export * from './examSessionService';
 export * from './authService';
 export * from './cameraService';
+export * from './violationService';
