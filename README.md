@@ -99,6 +99,12 @@ cd AI
 
 ---
 
+## 📘 Tài Liệu Tham Khảo Thêm
+
+* **[Tài Liệu Chi Tiết Phân Tích Hành Vi Bằng LSTM](docs/lstm_behavior_analysis.md)**: Chi tiết về kiến trúc mô hình, 24 đặc trưng đầu vào, quy trình sinh dữ liệu giả lập và huấn luyện mô hình.
+
+---
+
 ## 📊 Bảng Danh Sách Cổng Kết Nối (Port Mappings)
 
 | Thành phần | Địa chỉ chạy mặc định | Mô tả |
@@ -108,4 +114,5 @@ cd AI
 | **FastAPI AI Server** | `http://localhost:8000` | Động cơ phân tích hình ảnh AI |
 | **AI WebSocket** | `ws://localhost:8000/ws` | Nhận base64 frame từ Client |
 | **MySQL Database** | `localhost:3306` | CSDL quản lý sinh viên/ca thi |
+
 

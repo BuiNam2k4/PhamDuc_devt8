@@ -40,7 +40,72 @@ RTSP (Camera) -> Giải mã -> YOLOv8 -> Tracking -> MediaPipe Pose -> Chuỗi t
 
 ---
 
-## 3. Tiêu chí Nghiệm thu Định lượng (KPIs & Acceptance Criteria)
+## 3. Chi tiết Thuật toán Chuỗi thời gian & Phân tích Hành vi (Time-Series Buffer & Behavior Voting)
+
+Hệ thống sử dụng cơ chế **Chuỗi thời gian (Time-Series Buffer)** kết hợp với **Thuật toán bỏ phiếu (Heuristic Voting)** trên cửa sổ trượt (Sliding Window) để khắc phục nhược điểm của việc đánh giá trên từng khung hình đơn lẻ (thường dẫn đến báo động giả do nhiễu vật thể hoặc chuyển động nhất thời).
+
+### A. Thông số Kỹ thuật & Cấu hình Buffer (`TimeSeriesManager` & `PersonTimeSeriesBuffer`)
+* **Kích thước cửa sổ trượt (Sliding Window Size - $W$):** Cố định ở **30 frames** (tương đương khoảng $1.5 - 2.0$ giây hoạt động thực tế với camera tốc độ $15 - 20$ FPS).
+* **Ngưỡng tối thiểu để phân tích (`min_frames_required`):** **10 frames**. AI sẽ không đưa ra bất kỳ phán đoán nào nếu dữ liệu trong buffer tích lũy chưa đạt 10 frames (tránh trường hợp dữ liệu ban đầu chưa ổn định).
+* **Thời gian dọn dẹp bộ nhớ (`stale_timeout`):** **30.0 giây**. Nếu một thí sinh (`track_id`) biến mất khỏi khung hình quá 30 giây, buffer chuỗi thời gian của thí sinh đó sẽ được tự động giải phóng để tiết kiệm RAM.
+
+### B. Định dạng Tensor Đặc trưng (Feature Tensor for LSTM Integration)
+Để chuẩn bị sẵn sàng cho việc tích hợp mô hình học sâu LSTM trong tương lai mà không cần thay đổi kiến trúc dữ liệu nền tảng, hàm `to_feature_tensor()` chuyển đổi buffer 30 frames thành một tensor có kích thước **`[seq_len, 24]`** ($seq\_len \le 30$). Mỗi frame được biểu diễn bằng một vector đặc trưng gồm **24 chiều (features)** như sau:
+
+| Chỉ số cột (Index) | Tên Đặc trưng | Kiểu Dữ liệu / Khoảng giá trị | Giải thích chi tiết |
+| :--- | :--- | :--- | :--- |
+| **`[0 - 2]`** | **Head Pose** | Float, $[-1.0, 1.0]$ | Các góc quay đầu: **Yaw**, **Pitch**, **Roll**. Được chia cho `180.0` để chuẩn hóa (normalize) về khoảng $[-1.0, 1.0]$. |
+| **`[3 - 20]`** | **Key Landmarks** | Float, $[0.0, 1.0]$ | Tọa độ $(x, y)$ của **9 điểm xương/khuôn mặt cốt lõi** từ MediaPipe Pose (tổng cộng 18 giá trị). Đã được MediaPipe chuẩn hóa theo kích thước khung hình.<br>Danh sách điểm: `nose` (0), `left_shoulder` (11), `right_shoulder` (12), `left_elbow` (13), `right_elbow` (14), `left_wrist` (15), `right_wrist` (16), `left_hip` (23), `right_hip` (24). |
+| **`[21]`** | **Cell Phone Flag** | Float, $\{0.0, 1.0\}$ | Nhận giá trị `1.0` nếu YOLOv8 phát hiện vật thể `cell phone` ở gần thí sinh trong frame, ngược lại nhận `0.0`. |
+| **`[22]`** | **Book/Document Flag**| Float, $\{0.0, 1.0\}$ | Nhận giá trị `1.0` nếu YOLOv8 phát hiện vật thể `book` (tài liệu/sách) ở gần thí sinh trong frame, ngược lại nhận `0.0`. |
+| **`[23]`** | **Face Visibility Flag**| Float, $\{0.0, 1.0\}$ | Nhận giá trị `1.0` nếu Face Mesh phát hiện được khuôn mặt, nhận `0.0` nếu bị mất dấu khuôn mặt (ví dụ: bị che mặt). |
+
+### C. Quy tắc Bỏ phiếu & Điều kiện Kích hoạt Vi phạm (Behavior Voting Logic)
+Với mỗi frame mới được thêm vào buffer, lớp `BehaviorAnalyzer` thực hiện duyệt qua cửa sổ trượt $W$ (tối đa 30 frames gần nhất) và tính toán tỷ lệ vi phạm ($Ratio = \frac{Count_{vi\_pham}}{W}$). Sự kiện vi phạm chỉ được xác nhận và đẩy lên server backend khi thỏa mãn **đồng thời 2 điều kiện**:
+1. **Điều kiện chuỗi thời gian:** Tỷ lệ $Ratio \ge Ngưỡng\_Voting$ tương ứng của hành vi đó.
+2. **Điều kiện tức thời (Last Frame Verification):** Hành vi vi phạm vẫn đang tiếp diễn ở khung hình hiện tại (khung hình cuối cùng trong window). Điều này cực kỳ quan trọng để đảm bảo bức ảnh bằng chứng chụp lại (snapshot) chứa hình ảnh trực quan rõ ràng của lỗi đó.
+
+Dưới đây là chi tiết các ngưỡng số liệu cụ thể cho từng loại hành vi:
+
+#### 1. Sử dụng Điện thoại Di động (`phone_usage`)
+* **Ngưỡng Voting:** **$\ge 60\%$** (ít nhất 18 trong 30 frames gần nhất phát hiện thấy điện thoại).
+* **Logic chi tiết:** 
+  * Điều kiện frame đơn lẻ: Vật thể `cell phone` nằm trong danh sách các vật thể ở gần thí sinh.
+  * Phán quyết: $Ratio = \frac{Frames\_chứa\_phone}{Total\_frames\_in\_window} \ge 0.60$.
+  * Điều kiện bổ sung: Frame hiện tại buộc phải chứa `cell phone` để làm bằng chứng chụp ảnh.
+
+#### 2. Quay đầu Bất thường (`looking_away` - Chế độ Online)
+* **Ngưỡng Voting:** **$\ge 70\%$** (ít nhất 21 trong 30 frames gần nhất phát hiện quay đầu bất thường).
+* **Ngưỡng góc giới hạn (Degrees):**
+  * **Yaw (Xoay trái/phải):** $> 30.0^\circ$ hoặc $< -30.0^\circ$.
+  * **Pitch (Ngước lên):** $> 25.0^\circ$.
+  * **Pitch (Cúi xuống):** $< -35.0^\circ$ (thiết lập sâu hơn để tránh báo sai khi thí sinh cúi xuống nháp hoặc đọc đề bài).
+* **Đo tốc độ chuyển động đầu (Angular Velocity):**
+  * Tính bằng trung bình độ lệch góc Yaw tuyệt đối giữa các frame liên tiếp: $Velocity_{avg} = \frac{1}{N-1} \sum_{i=1}^{N-1} |Yaw_i - Yaw_{i-1}|$.
+  * Nếu tốc độ chuyển động đột ngột vượt quá ngưỡng **$15.0^\circ/\text{frame}$**, hệ thống ghi nhận đây là chuyển động xoay đầu cực nhanh và bất thường.
+* **Phán quyết:** Tỷ lệ số frame có góc xoay vượt ngưỡng $\ge 70\%$, và frame hiện tại thí sinh vẫn đang trong trạng thái xoay đầu.
+
+#### 3. Tài liệu/Vật thể cấm trên Bàn thi (`cheat_sheet`)
+* **Ngưỡng Voting:** **$\ge 50\%$** (ít nhất 15 trong 30 frames gần nhất phát hiện thấy tài liệu).
+* **Logic chi tiết:**
+  * Điều kiện frame đơn lẻ: Vật thể `book` nằm trong danh sách các vật thể ở gần thí sinh.
+  * Phán quyết: $Ratio = \frac{Frames\_chứa\_book}{Total\_frames\_in\_window} \ge 0.50$, và frame cuối cùng vẫn phát hiện thấy `book`.
+
+#### 4. Quay người ra sau / Tư thế ngồi bất thường (`turning_around` - Chế độ Offline)
+* **Ngưỡng Voting:** **$\ge 50\%$** (ít nhất 15 trong 30 frames gần nhất phát hiện tư thế bất thường).
+* **Logic phân tích tư thế qua Landmarks xương:**
+  * **Quay lưng về phía camera (Back-to-camera):** Phát hiện khi không thấy mặt (`face_visible == False`) kết hợp so sánh tọa độ trục X giữa vai trái (`left_shoulder`) và vai phải (`right_shoulder`).
+    * *Hiệu chuẩn động camera đối xứng (Mirrored stream auto-calibration):* Khi yaw $< 15.0^\circ$ (nhìn thẳng), hệ thống tự động xác định luồng camera có bị lật gương hay không. Nếu bị lật gương (mirrored), tư thế quay lưng thỏa mãn: $x_{vai\_trai} > x_{vai\_phai}$. Nếu không lật gương, thỏa mãn: $x_{vai\_trai} < x_{vai\_phai}$.
+  * **Quay nghiêng người góc lớn (Sideways):** Đo tỷ số giữa chiều ngang vai (`shoulder_width = |x_{vai\_trai} - x_{vai\_phai}|`) và chiều dọc cơ thể (`torso_height = |y_{trung\_binh\_vai} - y_{trung\_binh\_hông}|`).
+    * Tư thế quay nghiêng được xác định khi: $\frac{Shoulder\_width}{Torso\_height} < 0.35$ (tức là vai co hẹp lại dưới 35% so với chiều dài thân khi nhìn nghiêng).
+
+#### 5. Mất Khuôn mặt / Che Camera (`face_missing` - Tắt mặc định / Bật khi cần)
+* **Ngưỡng Voting:** **$\ge 80\%$** (ít nhất 24 trong 30 frames gần nhất không tìm thấy khuôn mặt).
+* **Logic chi tiết:** Phát hiện khi camera bị che khuất hoặc thí sinh rời khỏi vùng quan sát của camera.
+
+---
+
+## 4. Tiêu chí Nghiệm thu Định lượng (KPIs & Acceptance Criteria)
 
 Để chứng minh năng lực của hệ thống bằng số liệu khoa học, dự án đặt ra các chỉ số nghiệm thu cụ thể sau:
 
@@ -62,7 +127,7 @@ Các thông số này được đánh giá trên tập dữ liệu kiểm thử 
 
 ---
 
-## 4. Kế hoạch Kiểm thử & Chứng minh Hiệu năng (Load & Stress Test)
+## 5. Kế hoạch Kiểm thử & Chứng minh Hiệu năng (Load & Stress Test)
 
 Cuối tháng cần chứng minh khả năng đáp ứng mục tiêu **dưới 1 giây** dưới các điều kiện tải thực tế:
 
@@ -79,7 +144,7 @@ Cuối tháng cần chứng minh khả năng đáp ứng mục tiêu **dưới 1
 
 ---
 
-## 5. Chiến lược Phát triển & Từng bước Kiểm thử (Developer Strategy)
+## 6. Chiến lược Phát triển & Từng bước Kiểm thử (Developer Strategy)
 
 Để dự án đạt hiệu quả cao nhất và dễ dàng demo trước hội đồng chấm điểm trên một thiết bị duy nhất, chiến lược triển khai của lập trình viên sẽ được chia làm 2 giai đoạn:
 

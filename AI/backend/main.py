@@ -50,6 +50,12 @@ async def lifespan(app: FastAPI):
     """Quản lý vòng đời server: startup → shutdown."""
     logger.info("🚀 AI Server starting up...")
     logger.info(f"📡 Spring Boot target: {spring_boot_client.base_url}")
+    ba = violation_detector.behavior_analyzer
+    logger.info(f"🧠 Behavior detection mode: {ba.detection_mode.upper()}")
+    if ba.lstm_classifier and ba.lstm_classifier.is_loaded:
+        logger.info(f"   LSTM weights loaded from: {ba.model_path}")
+    else:
+        logger.warning("   LSTM model not loaded, running in HEURISTIC fallback mode.")
     yield
     # Shutdown: đóng HTTP session
     await spring_boot_client.close()
@@ -563,6 +569,40 @@ async def get_analyzer_config(session_id: str = None):
             return session["violation_detector"].get_config()
         return {"error": f"Session {session_id} not found"}
     return violation_detector.get_config()
+
+@app.post("/api/analyzer-config")
+async def update_analyzer_config(
+    detection_mode: str = Query(..., description="Chế độ nhận diện: lstm hoặc heuristic"),
+    session_id: str = Query(None)
+):
+    """Cập nhật cấu hình chế độ nhận diện (LSTM hoặc Heuristic)"""
+    if detection_mode not in ["lstm", "heuristic"]:
+        return JSONResponse(
+            status_code=400, 
+            content={"error": "Chế độ nhận diện không hợp lệ (chỉ chấp nhận 'lstm' hoặc 'heuristic')"}
+        )
+        
+    updated_sessions = []
+    if session_id:
+        session = active_sessions.get(session_id)
+        if session:
+            session["violation_detector"].behavior_analyzer.detection_mode = detection_mode
+            updated_sessions.append(session_id)
+        else:
+            return JSONResponse(status_code=404, content={"error": f"Session {session_id} không tồn tại"})
+    else:
+        violation_detector.behavior_analyzer.detection_mode = detection_mode
+        for s_id, s_data in active_sessions.items():
+            s_data["violation_detector"].behavior_analyzer.detection_mode = detection_mode
+            updated_sessions.append(s_id)
+            
+    return {
+        "status": "success",
+        "detection_mode": detection_mode,
+        "updated_sessions_count": len(updated_sessions),
+        "updated_sessions": updated_sessions,
+        "global_mode": violation_detector.behavior_analyzer.detection_mode
+    }
 
 @app.get("/api/spring-boot-stats")
 async def get_spring_boot_stats():

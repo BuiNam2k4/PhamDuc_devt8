@@ -10,7 +10,9 @@ Hiện tại: Rule-based voting.
 Tương lai: Có thể thay thế bằng LSTM mà không cần sửa buffer.
 """
 
+import os
 from monitoring.time_series_buffer import PersonTimeSeriesBuffer
+from monitoring.behavior_lstm import BehaviorLSTMClassifier
 
 
 class BehaviorAnalyzer:
@@ -24,6 +26,19 @@ class BehaviorAnalyzer:
     def __init__(self):
         # Chế độ hoạt động: True = Offline (giám sát phòng thi), False = Online (webcam cá nhân)
         self.offline_mode = False
+
+        # Chế độ nhận diện: "lstm" hoặc "heuristic"
+        self.detection_mode = "heuristic"
+        
+        # Đường dẫn model và khởi tạo classifier
+        model_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
+        self.model_path = os.getenv("BEHAVIOR_LSTM_PATH", os.path.join(model_dir, "behavior_lstm.pth"))
+        self.lstm_classifier = None
+        
+        if os.path.exists(self.model_path):
+            self.lstm_classifier = BehaviorLSTMClassifier(self.model_path)
+            if self.lstm_classifier.is_loaded:
+                self.detection_mode = "lstm"
 
         # Ngưỡng voting cho từng loại vi phạm
         # Key: loại vi phạm
@@ -55,17 +70,17 @@ class BehaviorAnalyzer:
             buffer: PersonTimeSeriesBuffer chứa dữ liệu N frames gần nhất.
             
         Returns:
-            list[dict]: Danh sách vi phạm detected. Mỗi vi phạm gồm:
-                - type (str): Loại vi phạm
-                - confidence (float): Tỉ lệ vote (0.0 → 1.0)
-                - threshold (float): Ngưỡng yêu cầu
-                - source (str): "time_series"
-                - window_size (int): Kích thước cửa sổ đã phân tích
-                - details (dict): Thông tin chi tiết
+            list[dict]: Danh sách vi phạm detected.
         """
         if not buffer.is_ready(self.min_frames_required):
             return []
 
+        if self.detection_mode == "lstm" and self.lstm_classifier and self.lstm_classifier.is_loaded:
+            return self._analyze_lstm(buffer)
+        else:
+            return self._analyze_heuristic(buffer)
+
+    def _analyze_heuristic(self, buffer: PersonTimeSeriesBuffer):
         window = buffer.get_window()
         violations = []
 
@@ -89,11 +104,133 @@ class BehaviorAnalyzer:
         if result:
             violations.append(result)
 
-        # result = self._vote_face_missing(window)
-        # if result:
-        #     violations.append(result)
-
         return violations
+
+    def _analyze_lstm(self, buffer: PersonTimeSeriesBuffer):
+        features = buffer.to_feature_tensor()
+        if len(features) < self.min_frames_required:
+            return []
+            
+        pred_res = self.lstm_classifier.predict(features)
+        class_name = pred_res['class_name']
+        confidence = pred_res['confidence']
+        
+        if class_name == 'normal':
+            return []
+            
+        lstm_threshold = 0.75
+        if confidence < lstm_threshold:
+            return []
+            
+        window = buffer.get_window()
+        current_frame = window[-1]
+        
+        if class_name == 'phone_usage':
+            if 'cell phone' not in current_frame.get('objects_nearby', []):
+                return []
+            return [{
+                'type': 'phone_usage',
+                'confidence': round(confidence, 3),
+                'threshold': lstm_threshold,
+                'source': 'lstm',
+                'window_size': len(window),
+                'details': {
+                    'description': f'LSTM phát hiện Sử dụng điện thoại (Độ tin cậy: {confidence*100:.1f}%)'
+                }
+            }]
+            
+        elif class_name == 'cheat_sheet':
+            if 'book' not in current_frame.get('objects_nearby', []):
+                return []
+            return [{
+                'type': 'cheat_sheet',
+                'confidence': round(confidence, 3),
+                'threshold': lstm_threshold,
+                'source': 'lstm',
+                'window_size': len(window),
+                'details': {
+                    'description': f'LSTM phát hiện Tài liệu/sách trên bàn (Độ tin cậy: {confidence*100:.1f}%)'
+                }
+            }]
+            
+        elif class_name == 'looking_away':
+            if self.offline_mode:
+                return []
+                
+            hp = current_frame.get('head_pose', {})
+            yaw = hp.get('yaw', 0.0)
+            pitch = hp.get('pitch', 0.0)
+            is_away = (
+                abs(yaw) > self.head_yaw_threshold or
+                pitch > self.head_pitch_up_threshold or
+                pitch < -self.head_pitch_down_threshold
+            )
+            if not is_away:
+                return []
+                
+            dominant_direction = "chỗ khác"
+            if abs(yaw) > self.head_yaw_threshold:
+                dominant_direction = "trái" if yaw < 0 else "phải"
+            elif pitch > self.head_pitch_up_threshold:
+                dominant_direction = "lên"
+            elif pitch < -self.head_pitch_down_threshold:
+                dominant_direction = "xuống"
+                
+            return [{
+                'type': 'looking_away',
+                'confidence': round(confidence, 3),
+                'threshold': lstm_threshold,
+                'source': 'lstm',
+                'window_size': len(window),
+                'details': {
+                    'dominant_direction': dominant_direction,
+                    'description': f'LSTM phát hiện Quay đầu {dominant_direction} (Độ tin cậy: {confidence*100:.1f}%)'
+                }
+            }]
+            
+        elif class_name == 'turning_around':
+            if not self.offline_mode:
+                return []
+                
+            kl = current_frame.get('key_landmarks', {})
+            l_shoulder = kl.get('left_shoulder', (0.0, 0.0))
+            r_shoulder = kl.get('right_shoulder', (0.0, 0.0))
+            l_hip = kl.get('left_hip', (0.0, 0.0))
+            r_hip = kl.get('right_hip', (0.0, 0.0))
+            
+            is_turning = False
+            if (l_shoulder != (0.0, 0.0) and r_shoulder != (0.0, 0.0) and 
+                l_hip != (0.0, 0.0) and r_hip != (0.0, 0.0)):
+                is_back_to_camera = False
+                if not current_frame.get('face_visible', True):
+                    is_mirrored = buffer.is_mirrored
+                    if is_mirrored:
+                        is_back_to_camera = l_shoulder[0] > r_shoulder[0]
+                    else:
+                        is_back_to_camera = l_shoulder[0] < r_shoulder[0]
+                
+                shoulder_width = abs(l_shoulder[0] - r_shoulder[0])
+                torso_height = abs((l_shoulder[1] + r_shoulder[1])/2 - (l_hip[1] + r_hip[1])/2)
+                is_sideways = False
+                if torso_height > 0.01:
+                    is_sideways = (shoulder_width / torso_height) < 0.35
+                is_turning = is_back_to_camera or is_sideways
+                
+            if not is_turning:
+                return []
+                
+            return [{
+                'type': 'turning_around',
+                'confidence': round(confidence, 3),
+                'threshold': lstm_threshold,
+                'source': 'lstm',
+                'window_size': len(window),
+                'details': {
+                    'description': f'LSTM phát hiện Quay người ra sau (Độ tin cậy: {confidence*100:.1f}%)'
+                }
+            }]
+            
+        return []
 
     def _vote_phone_usage(self, window):
         """
@@ -395,10 +532,12 @@ class BehaviorAnalyzer:
     def get_config(self):
         """Trả về cấu hình hiện tại của analyzer (để hiển thị trên UI debug)."""
         return {
+            'detection_mode': self.detection_mode,
             'offline_mode': self.offline_mode,
             'voting_thresholds': self.voting_thresholds,
             'head_yaw_threshold': self.head_yaw_threshold,
-            'head_pitch_threshold': self.head_pitch_threshold,
+            'head_pitch_up_threshold': self.head_pitch_up_threshold,
+            'head_pitch_down_threshold': self.head_pitch_down_threshold,
             'angular_velocity_threshold': self.angular_velocity_threshold,
             'min_frames_required': self.min_frames_required,
         }
